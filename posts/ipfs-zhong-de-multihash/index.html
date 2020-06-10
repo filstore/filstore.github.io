@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<title>IPFS 中的 multihash - FILVIP</title>
+<meta name="description" content="">
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="/favicon.png">
+
+<link rel="stylesheet" href="/css/style.css?rnd=1591789318" />
+
+<link rel="stylesheet" href="/css/my.css?rnd=1591789318">
+
+<meta property="og:title" content="IPFS 中的 multihash" />
+<meta property="og:description" content="本文主要向大家介绍 IPFS 中的 multihash 的结构和基本使用。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/posts/ipfs-zhong-de-multihash/" />
+<meta property="og:image" content="/images/og-featured.png"/>
+<meta property="article:published_time" content="2018-10-23T19:28:20+08:00" />
+<meta property="article:modified_time" content="2018-10-23T19:28:20+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="/images/og-featured.png"/>
+
+<meta name="twitter:title" content="IPFS 中的 multihash"/>
+<meta name="twitter:description" content="本文主要向大家介绍 IPFS 中的 multihash 的结构和基本使用。"/>
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header> 
+            
+                <h1 class="site-header">
+    <a href="/">FILVIP</a>
+</h1>
+<nav>
+    
+    
+    <a class="" href="/tags/ipfs" title="IPFS">IPFS</a>
+    
+    <a class="" href="/tags/filecoin" title="FileCoin">FileCoin</a>
+    
+    <a class="" href="/posts/" title="Archive">Archive</a>
+    
+    <a class="" href="/about" title="About">About</a>
+    
+</nav>
+
+            
+        </header>
+        <main id="main" tabindex="-1"> 
+            
+
+    <article class="post">
+        <header>
+            <h1 class="post-title">IPFS 中的 multihash</h1>
+        </header>
+        <div class="content">
+            <p>在 <a href="/posts/ipfs-sheng-tai-gai-lan">IPFS 生态概览</a> 一文中我们已经提到了 multihash，那我们就来看看在 IPFS 中是如何使用它的？</p>
+<h2 id="为什么要用-multihash">为什么要用 multihash</h2>
+<p>IPFS 默认使用的 HASH 算法是 sha2-256, 虽然现在 sha2-256 还算安全，但这并不意味它不会被攻破，随着算力的发展，说不定哪天就被破解了，所以 IPFS 需要一种可升级具有自描述的 HASH 格式，这就是 multihash。</p>
+<h2 id="multihash-格式">multihash 格式</h2>
+<p>multihash 的格式很简单，具体文档参见 <a href="https://github.com/multiformats/multihash">multiformats/multihash</a>。它其实就是一个字符串，由三部分组成：HASH算法编码、HASH值的长度（字节数）、HASH 值 组成，形如：</p>
+<pre><code>&lt;varint hash function code&gt;&lt;varint digest size in bytes&gt;&lt;hash function output&gt;
+</code></pre><p>例如：函数为 sha2-256，值为 32 位的 6cb42b2e29c28aeb143c3b9a0d9787f38ce2e5efea68ab01df6e121e4146ed8d 的 multihash 格式为：12206cb42b2e29c28aeb143c3b9a0d9787f38ce2e5efea68ab01df6e121e4146ed8d。</p>
+<p>说明：</p>
+<ol>
+<li>这里使用的是 sha2-256，其 HASH 编码为 0x12 ，multihash 中所有 HASH 算法编码如下：</li>
+</ol>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#75715e">// constants
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">const</span> (
+   <span style="color:#a6e22e">ID</span>         = <span style="color:#ae81ff">0x00</span>
+   <span style="color:#a6e22e">SHA1</span>       = <span style="color:#ae81ff">0x11</span>
+   <span style="color:#a6e22e">SHA2_256</span>   = <span style="color:#ae81ff">0x12</span>
+   <span style="color:#a6e22e">SHA2_512</span>   = <span style="color:#ae81ff">0x13</span>
+   <span style="color:#a6e22e">SHA3_224</span>   = <span style="color:#ae81ff">0x17</span>
+   <span style="color:#a6e22e">SHA3_256</span>   = <span style="color:#ae81ff">0x16</span>
+   <span style="color:#a6e22e">SHA3_384</span>   = <span style="color:#ae81ff">0x15</span>
+   <span style="color:#a6e22e">SHA3_512</span>   = <span style="color:#ae81ff">0x14</span>
+   <span style="color:#a6e22e">SHA3</span>       = <span style="color:#a6e22e">SHA3_512</span>
+   <span style="color:#a6e22e">KECCAK_224</span> = <span style="color:#ae81ff">0x1A</span>
+   <span style="color:#a6e22e">KECCAK_256</span> = <span style="color:#ae81ff">0x1B</span>
+   <span style="color:#a6e22e">KECCAK_384</span> = <span style="color:#ae81ff">0x1C</span>
+   <span style="color:#a6e22e">KECCAK_512</span> = <span style="color:#ae81ff">0x1D</span>
+ 
+   <span style="color:#a6e22e">SHAKE_128</span> = <span style="color:#ae81ff">0x18</span>
+   <span style="color:#a6e22e">SHAKE_256</span> = <span style="color:#ae81ff">0x19</span>
+ 
+   <span style="color:#a6e22e">BLAKE2B_MIN</span> = <span style="color:#ae81ff">0xb201</span>
+   <span style="color:#a6e22e">BLAKE2B_MAX</span> = <span style="color:#ae81ff">0xb240</span>
+   <span style="color:#a6e22e">BLAKE2S_MIN</span> = <span style="color:#ae81ff">0xb241</span>
+   <span style="color:#a6e22e">BLAKE2S_MAX</span> = <span style="color:#ae81ff">0xb260</span>
+ 
+   <span style="color:#a6e22e">DBL_SHA2_256</span> = <span style="color:#ae81ff">0x56</span>
+ 
+   <span style="color:#a6e22e">MURMUR3</span> = <span style="color:#ae81ff">0x22</span>
+)
+</code></pre></div><ol start="2">
+<li>6cb42b2e29c28aeb143c3b9a0d9787f38ce2e5efea68ab01df6e121e4146ed8d 看上去是 64 位，那是因为用了十六进制的表示方式，每个字符表示4个bit，加在一起就是 256 bit，也就是 32 字节，转化为 16 进制就是 <code>0x20</code>，故第二位就是 <code>20</code>。</li>
+</ol>
+<h2 id="multihash-基本使用">multihash 基本使用</h2>
+<p>multihash 有多种实现版本，这里我们使用 go-multihash 。</p>
+<ul>
+<li>go-multihash 的安装</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">go get github.com/multiformats/go-multihash/multihash
+</code></pre></div><ul>
+<li>基本使用</li>
+</ul>
+<p>通过 multihash -h 查看其所有参数选项，可以发现它默认使用的 HASH 算法是 sha2-256，编码格式为 base58。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">usage: multihash <span style="color:#f92672">[</span>options<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>FILE<span style="color:#f92672">]</span>
+Print or check multihash checksums.
+With no FILE, or when FILE is -, read standard input.
+ 
+Options:
+  -a string
+        one of: blake2b-128, blake2b-224, blake2b-256, blake2b-384, blake2b-512, blake2s-256, dbl-sha2-256, id, keccak-224, keccak-256, keccak-384, keccak-512, murmur3, sha1, sha2-256, sha2-512, sha3, sha3-224, sha3-256, sha3-384, sha3-512, shake-128, shake-256 <span style="color:#f92672">(</span>shorthand<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>default <span style="color:#e6db74">&#34;sha2-256&#34;</span><span style="color:#f92672">)</span>
+  -algorithm string
+        one of: blake2b-128, blake2b-224, blake2b-256, blake2b-384, blake2b-512, blake2s-256, dbl-sha2-256, id, keccak-224, keccak-256, keccak-384, keccak-512, murmur3, sha1, sha2-256, sha2-512, sha3, sha3-224, sha3-256, sha3-384, sha3-512, shake-128, shake-256 <span style="color:#f92672">(</span>default <span style="color:#e6db74">&#34;sha2-256&#34;</span><span style="color:#f92672">)</span>
+  -c string
+        check checksum matches <span style="color:#f92672">(</span>shorthand<span style="color:#f92672">)</span>
+  -check string
+        check checksum matches
+  -e string
+        one of: raw, hex, base58, base64 <span style="color:#f92672">(</span>shorthand<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>default <span style="color:#e6db74">&#34;base58&#34;</span><span style="color:#f92672">)</span>
+  -encoding string
+        one of: raw, hex, base58, base64 <span style="color:#f92672">(</span>default <span style="color:#e6db74">&#34;base58&#34;</span><span style="color:#f92672">)</span>
+  -h    display help message <span style="color:#f92672">(</span>shorthand<span style="color:#f92672">)</span>
+  -help
+        display help message
+  -l int
+        checksums length in bits <span style="color:#f92672">(</span>truncate<span style="color:#f92672">)</span>. -1 is default <span style="color:#f92672">(</span>shorthand<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>default -1<span style="color:#f92672">)</span>
+  -length int
+        checksums length in bits <span style="color:#f92672">(</span>truncate<span style="color:#f92672">)</span>. -1 is default <span style="color:#f92672">(</span>default -1<span style="color:#f92672">)</span>
+  -q    quiet output <span style="color:#f92672">(</span>no newline on checksum, no error text<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>shorthand<span style="color:#f92672">)</span>
+  -quiet
+        quiet output <span style="color:#f92672">(</span>no newline on checksum, no error text<span style="color:#f92672">)</span>
+</code></pre></div><p>下面我们尝试使用 multihash 对一个文件进行校验计算。首先新建一个 enp.txt 文件，输入内容为 “正道成功，EPN”，再执行 multihash epn.txt 命令。</p>
+<pre><code>$ echo &quot;正道成功，EPN&quot; &gt; epn.txt
+$ multihash epn.txt
+$ QmbftC2aCSGeFLWu995pBGpMvQGgWoMXBxZG2JxDYd9GLP
+</code></pre><h2 id="multihash-计算过程探究">multihash 计算过程探究</h2>
+<ul>
+<li>首先对内容进行 sha2-256 HASH 计算。</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ shasum -a <span style="color:#ae81ff">256</span> epn.txt
+$ c6153579704c93e8d7fbcfbb639b99213c0a6d8397facd0a58d2fc8f4d5dd2e0
+</code></pre></div><ul>
+<li>multihash 格式封装： 加上 sha2-256 的编码以及 HASH 长度得到的字符串为 1220c6153579704c93e8d7fbcfbb639b99213c0a6d8397facd0a58d2fc8f4d5dd2e0。</li>
+<li>base58 编码： base58 最早使用在 btc 钱包地址上，它相对于传统的 base64 而言，去除了某些不和谐，阅读不友好的字符，例如 +/-,O/0 等。</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ pip install base58
+$ python
+  
+&gt;&gt;&gt; import base58
+&gt;&gt;&gt; base58.b58encode_int<span style="color:#f92672">(</span>int<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;1220c6153579704c93e8d7fbcfbb639b99213c0a6d8397facd0a58d2fc8f4d5dd2e0&#34;</span>, 16<span style="color:#f92672">))</span>
+<span style="color:#e6db74">&#39;QmbftC2aCSGeFLWu995pBGpMvQGgWoMXBxZG2JxDYd9GLP&#39;</span>
+</code></pre></div><p>可以看到，通过 python 编码得到的 base58 结果和直接使用 go-multihash 结果一致，都是 QmbftC2aCSGeFLWu995pBGpMvQGgWoMXBxZG2JxDYd9GLP。</p>
+<h2 id="multihash-与-ipfs">multihash 与 IPFS</h2>
+<p>经常使用 IPFS 的人可能会发现其内容 HASH 都是以 Qm 开头，这和我们刚使用 go-multihash 计算的一致，这是因为 IPFS 直接使用了multihash 的默认选项，即 sha2-256 + base58。</p>
+<p>我们尝试使用 ipfs 命令计算  epn.txt 的 HASH 值。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ipfs add epn.txt
+added QmarcwWsQp5ew7jnFtqYTLgkWEWaMPde8gme5ApZQXvZkU epn.txt
+</code></pre></div><p>你会发现使用 ipfs 计算得出的 HASH 和直接使用 go-multihash 计算的不同，这是因为 ipfs 对内容进行 sha2-256 计算的时候，会对内容进行一定的加工（首尾添加特定字节），这点可以使用 ipfs object get 来查看。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ipfs object get QmarcwWsQp5ew7jnFtqYTLgkWEWaMPde8gme5ApZQXvZkU
+<span style="color:#f92672">{</span><span style="color:#e6db74">&#34;Links&#34;</span>:<span style="color:#f92672">[]</span>,<span style="color:#e6db74">&#34;Data&#34;</span>:<span style="color:#e6db74">&#34;\u0008\u0002\u0012\u0013正道成功，EPN\n\u0018\u0013&#34;</span><span style="color:#f92672">}</span>
+</code></pre></div><p>我们可以使用 multihash 对 ipfs 加工后的内容重新进行计算：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ipfs block get QmarcwWsQp5ew7jnFtqYTLgkWEWaMPde8gme5ApZQXvZkU &gt; epn-ipfs.txt
+$ multihash epn-ipfs.txt
+QmarcwWsQp5ew7jnFtqYTLgkWEWaMPde8gme5ApZQXvZkU
+</code></pre></div><p>可以看到此时计算出的 HASH 值与 IPFS 计算出的保持一致。</p>
+<h2 id="总结">总结</h2>
+<p>我们通过实际例子对 multihash 的格式，计算过程有深刻认识，其次我们还可以发现 ipfs 与 multihash 之间的内在联系，总而言之 IPFS 内容 HASH 计算过程可以大致看成 内容封装 &gt; hash2-256 计算 &gt; multihash 格式封装 &gt; base58 编码。</p>
+<p>参考链接: <a href="https://zhuanlan.zhihu.com/p/43853989">https://zhuanlan.zhihu.com/p/43853989</a></p>
+
+        </div>
+        
+
+    
+
+
+<div class="post-info">
+    
+        <div class="post-date">2018-10-23</div>
+    
+    <div class="post-taxonomies">
+        
+            
+                <ul class="post-tags">
+                    
+                        <li><a href="/tags/ipfs">#ipfs</a></li>
+                    
+                </ul>
+        
+    </div>
+</div>
+
+    </article>
+
+    
+
+    
+
+
+        </main>
+        <footer>
+            
+                
+                
+
+                <p>© filstore.vip, 2020<br>
+Powered by <a target="_blank" href="https://gohugo.io/">Hugo</a>, theme <a target="_blank" href="https://github.com/mitrichius/hugo-theme-anubis">Anubis</a>.
+</p>
+            
+        </footer>
+    </div>
+</body>
+</html>
