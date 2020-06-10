@@ -6,15 +6,201 @@
     <description>FILVIP</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 22 Oct 2018 15:27:35 +0800</lastBuildDate>
+    <lastBuildDate>Fri, 18 Jan 2019 16:10:41 +0800</lastBuildDate>
     
     <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
+      <title>IPFS cat 命令详解</title>
+      <link>/posts/ipfs-cat-ming-ling-xiang-jie/</link>
+      <pubDate>Fri, 18 Jan 2019 16:10:41 +0800</pubDate>
+      
+      <guid>/posts/ipfs-cat-ming-ling-xiang-jie/</guid>
+      <description>&lt;h2 id=&#34;命令介绍&#34;&gt;命令介绍&lt;/h2&gt;
+&lt;p&gt;我们可以使用 &lt;code&gt;ipfs cat&lt;/code&gt; 命令直接查看一个文件对象（object）的内容，也可以使用 IO 重定向 &lt;code&gt;&amp;gt;&lt;/code&gt; 来进行下载，例如：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;ipfs cat QmWBbKvLhVnkryKG6F5YdkcnoVahwD7Qi3CeJeZgM6Tq68 &amp;gt; 神秘巨星.mp4
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;备注： 资源来自&lt;a href=&#34;https://zhuanlan.zhihu.com/p/35342854&#34;&gt;链接&lt;/a&gt;。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;cat&lt;/code&gt; 命令支持 -o 和 -l 参数，分别表示文件读取的偏移量（offset）以及读取文件内容的长度，例如：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;ipfs cat QmWBbKvLhVnkryKG6F5YdkcnoVahwD7Qi3CeJeZgM6Tq68 -o &lt;span style=&#34;color:#ae81ff&#34;&gt;256&lt;/span&gt; -l &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;注： 表示从文件 QmWBbKvLhVnkryKG6F5YdkcnoVahwD7Qi3CeJeZgM6Tq68 的第 256 个字节开始，查看10个字节的内容，这个功能很好用，我们可以用它来实现分片下载以及断点续传等功能。&lt;/p&gt;
+&lt;h2 id=&#34;ipfs-文件组织方式&#34;&gt;IPFS 文件组织方式&lt;/h2&gt;
+&lt;p&gt;在具体讲解 cat 命令的实现逻辑之前，我们先来了解下 IPFS 文件对象的组织方式，其实 IPFS 对象是一棵树，每个节点下面最多包含174个 Links(字节点)。文件对象的节点主要分类两种(Data_File 和 Data_Raw), 只有最下面的叶子节点才会存储真实的数据（Data_Raw），其它节点只是数据节点的元信息，如图：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs_cat01.png&#34; alt=&#34;object.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;注： 红色（Data_File）、绿色（Data_Raw）。&lt;/p&gt;
+&lt;p&gt;我们可以 QmWBbKvLhVnkryKG6F5YdkcnoVahwD7Qi3CeJeZgM6Tq68 为例，通过 &lt;code&gt;ipfs object get&lt;/code&gt; 命令来对照查看：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;ipfs object get QmWBbKvLhVnkryKG6F5YdkcnoVahwD7Qi3CeJeZgM6Tq68
+
+&lt;span style=&#34;color:#75715e&#34;&gt;# output&lt;/span&gt;
+&lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; 
+   &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Links&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#f92672&#34;&gt;[&lt;/span&gt; 
+      &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; 
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Name&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&lt;/span&gt;,
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Hash&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;QmbmtXF9hZ6hLEubdLFP78MSPTWxUe78sYwjpCyiEJat3m&amp;#34;&lt;/span&gt;,
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Size&amp;#34;&lt;/span&gt;:45623854
+      &lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;, 
+       ... 省略 &lt;span style=&#34;color:#ae81ff&#34;&gt;32&lt;/span&gt; 行 ...
+ 
+      &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; 
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Name&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&lt;/span&gt;,
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Hash&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;QmXEqLu1hXe3MfDngRdV1yWmtFQbpVz1WyDHY17r6BbsYj&amp;#34;&lt;/span&gt;,
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Size&amp;#34;&lt;/span&gt;:31327573
+      &lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;
+   &lt;span style=&#34;color:#f92672&#34;&gt;]&lt;/span&gt;,
+   &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Data&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;\u0008\u0002\u0018...&amp;#34;&lt;/span&gt;
+&lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;可以看到 &lt;code&gt;QmWBbKvLhVnkryKG6F5YdkcnoVahwD7Qi3CeJeZgM6Tq68&lt;/code&gt; 总共包含了 34 个 Link ，其中前 33 个 Link 的数据大小都为 45623854 ，最后一个大小为 31327573。然后我们再递归调用 &lt;code&gt;ipfs object get&lt;/code&gt; 分别获取所有 Link 的 内容，例如第一个 Link：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;ipfs object get QmbmtXF9hZ6hLEubdLFP78MSPTWxUe78sYwjpCyiEJat3m
+
+&lt;span style=&#34;color:#75715e&#34;&gt;# output&lt;/span&gt;
+&lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; 
+   &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Links&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#f92672&#34;&gt;[&lt;/span&gt; 
+      &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; 
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Name&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&lt;/span&gt;,
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Hash&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;QmUgjKGQqNA4sJWbao2nBiANs46RjLAPaQrGLPHpR6Mh59&amp;#34;&lt;/span&gt;,
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Size&amp;#34;&lt;/span&gt;:262158
+      &lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;,
+      ... 省略 &lt;span style=&#34;color:#ae81ff&#34;&gt;172&lt;/span&gt; 个...
+      &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; 
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Name&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&lt;/span&gt;,
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Hash&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;QmSDaeEJ9ZsEGaFNx4ZMTAVcv8ncgMURKTjBeJ3gfhqkX9&amp;#34;&lt;/span&gt;,
+         &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Size&amp;#34;&lt;/span&gt;:262158
+      &lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;
+   &lt;span style=&#34;color:#f92672&#34;&gt;]&lt;/span&gt;,
+   &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Data&amp;#34;&lt;/span&gt;:&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;\u0008\u0002\u0018...&amp;#34;&lt;/span&gt;
+&lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;可以看到 &lt;code&gt;QmbmtXF9hZ6hLEubdLFP78MSPTWxUe78sYwjpCyiEJat3m&lt;/code&gt;  下面包含了 174 个文件，每个文件大小为 262158 字节，因为这些都是叶子节点，存储的都是真实的数据，而默认IPFS数据分片大小为 256KB，还添加了12个字节作为数据校准。再随意查看一个 Link ，可以看到它的实际内容：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;ipfs object get QmUgjKGQqNA4sJWbao2nBiANs46RjLAPaQrGLPHpR6Mh59
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;img src=&#34;/images/ipfs_cat02.png&#34; alt=&#34;store.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;到这一步，我们对IPFS文件对象的组织方式有了大概了解，那么接下来看看 cat 命令具体的实现逻辑。&lt;/p&gt;
+&lt;h2 id=&#34;cat-命令实现逻辑&#34;&gt;Cat 命令实现逻辑&lt;/h2&gt;
+&lt;p&gt;cat 命令的实现逻辑大致分为三步：&lt;/p&gt;
+&lt;h3 id=&#34;step-1-参数解析&#34;&gt;Step 1: 参数解析&lt;/h3&gt;
+&lt;p&gt;获得有效的 IPFS 或者 IPNS 对象的访问路径，例如上面的 &lt;code&gt;QmWBbKvLhVnkryKG6F5YdkcnoVahwD7Qi3CeJeZgM6Tq68&lt;/code&gt;
+获得命令的运行参数，主要是 -o 和 -l&lt;/p&gt;
+&lt;h3 id=&#34;step-2-递归下载-block-内容&#34;&gt;Step 2: 递归下载 Block 内容&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;首先获取 root cid 的内容，任何一个 cid 的内容获取过程如下：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;根据 cid 还原为 Block 文件 path,  先在 $IPFS_PATH/blocks/ 目录中查看文件是否存在，如果存在读取文件内容并解析。&lt;/li&gt;
+&lt;li&gt;如果没有找到，尝试使用 cid 的 v1 版本，重复 1 的过程，如果没有找到，再通过 BlockService 在 bitswap p2p 网络中寻找，如果找到，进行 3），没有找到进行4）。&lt;/li&gt;
+&lt;li&gt;解析内容，转化为 一个 ipld.Node ，并存储到本地的 blocks  内容中，并更新本地 BlockStorage 缓存。&lt;/li&gt;
+&lt;li&gt;退出任务，提示失败。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;当获取 root cid 内容的时候， IPFS 会将它封装了一个 file 对象。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;file 对象的读取是一个递归调用过程，直到内容读取完成或者对应长度。&lt;/li&gt;
+&lt;li&gt;file 中定义了一个 4096 的缓冲区，将 Block 中的内容顺序 flush 给客户端。&lt;/li&gt;
+&lt;li&gt;file 中的 Read 函数中定义了一个 precalcNextBuf 的函数，为了加快速度，该函数起了10个并发，可以同时从本地或者网络中准备好获取这10个Link 的内容到内存中（即使传入 -o、-l 参数），所以单个文件下载大约会消耗256KB * 10 = 2.5MB 内存。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;根据输入参数 -o 和 -l 设置文件读取的游标位置，主要调用 file.Seek() 函数。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;以上过程，我整理一个流程图，大致如下：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs_cat03.png&#34; alt=&#34;catflow.png&#34;&gt;&lt;/p&gt;
+&lt;h2 id=&#34;总结&#34;&gt;总结&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;IPFS 文件可以使用 -o -l 实现 range 下载。&lt;/li&gt;
+&lt;li&gt;IPFS 对于单个文件是顺序下载的，在下载过程中会提前准备好10个 Blocks 的内容，所以单个文件下载最多消耗256KB*10=2.5MB 内存。&lt;/li&gt;
+&lt;li&gt;下载消耗的总内存 = 总下载任务数 * 2.5MB。&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>IPFS GC研究</title>
+      <link>/posts/ipfs-cun-chu-kong-jian-gc/</link>
+      <pubDate>Tue, 25 Sep 2018 16:26:01 +0800</pubDate>
+      
+      <guid>/posts/ipfs-cun-chu-kong-jian-gc/</guid>
+      <description>&lt;p&gt;众所周知 IPFS 节点（peer）在初始化以后，默认使用的存储空间是 10GB（ipfs config show 可以查看），但随着 peer 节点加入网络的时间越来越久，存储空间使用率会逐步增加，直到达到上限，此时该节点将不再提供存储功能（但还能提供老数据的网络请求服务）。&lt;/p&gt;
+&lt;h2 id=&#34;gc-猜想&#34;&gt;GC 猜想&lt;/h2&gt;
+&lt;p&gt;对于这种情况，其实 IPFS 是提供了 GC 机制的，这个可以从 ipfs config 的  &lt;code&gt;StorageGCWatermark&lt;/code&gt; 参数得出。只是 GC 默认被关闭了，需要使用 &lt;code&gt;ipfs daemon --enable-gc&lt;/code&gt; 来启动，我们还可以使用 &lt;code&gt;ipfs repo gc&lt;/code&gt; 来手动 GC 。&lt;/p&gt;
+&lt;p&gt;猜想： 存储空间主要使用在两个方面，主动添加的内容（pined content）和节点访问而 Cache 的内容，当执行 GC 的时候，只删除 Cache 部分的内容，而被 pin 的内容应该被保留。&lt;/p&gt;
+&lt;h2 id=&#34;猜想验证&#34;&gt;猜想验证&lt;/h2&gt;
+&lt;p&gt;实验环境：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;IPFS 私网搭建，参考&lt;a href=&#34;https://zhuanlan.zhihu.com/p/35141862&#34;&gt;链接&lt;/a&gt; 。&lt;/li&gt;
+&lt;li&gt;两台虚拟机。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;此时两台虚拟机构建一个 IPFS 私网，它们分别为 ipfs01 和 ipfs02，数据只会在它们之间共享。&lt;/p&gt;
+&lt;h3 id=&#34;实验过程&#34;&gt;实验过程&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;step 1. 在 ipfs01 添加一张照片，然后执行 &lt;code&gt;ipfs pin | grep $HASH&lt;/code&gt; 查看是否已经 pined。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs_gc01.png&#34; alt=&#34;gc01&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Tips:  通过 ipfs add 命令的时候，内容会直接被 pined。&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;step 2. 在 ipfs02 中通过命令 &lt;code&gt;ipfs cat $HASH &amp;gt; cat.jpg&lt;/code&gt;  来下载该文件，然后执行 &lt;code&gt;ipfs pin | grep $HASH&lt;/code&gt; 查看是否 pined。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs_gc02.png&#34; alt=&#34;gc02&#34;&gt;&lt;/p&gt;
+&lt;p&gt;通过 ipfs cat 把 ipfs01 中的 cat.jpg 下载到了 ipfs02 ，我们可以通过浏览器查看其内容：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs_gc03.png&#34; alt=&#34;gc03&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Tips:  内容只是被缓存，并没有 pined。&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;step3 : 将 ipfs01 中的 $HASH unpin, 并在本地执行 &lt;code&gt;ipfs repo gc&lt;/code&gt; ，可以看到 该 $HASH 被清除：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs_gc04.png&#34; alt=&#34;gc04&#34;&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;step 4: 在 ipfs01 中重复执行 step 2 步骤：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs_gc05.png&#34; alt=&#34;gc05&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Tips:  可以看到 ipfs01 可以从 ipfs02 缓存节点中读取内容并保存。&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;step 5:  在两台机器中分别执行 &lt;code&gt;ipfs repo gc&lt;/code&gt; 后，再执行 &lt;code&gt;ipfs cat $HASH&lt;/code&gt;：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs_gc06.png&#34; alt=&#34;gc06&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Tips: 可以看到分别执行 gc 后，所有的缓存备份都被删除，故在全网中都无法搜索到内容，直到最后超时。&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id=&#34;结论&#34;&gt;结论：&lt;/h2&gt;
+&lt;p&gt;通过实验，验证了我们的猜想：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;首先 IPFS 存在 GC ，其次它只 GC  Cache 内容(即 unpin)。&lt;/li&gt;
+&lt;li&gt;因为默认 GC 不开启，此时 cached 和 pined 内容等效。&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>IPFS 三端可用性调研</title>
+      <link>/posts/ipfs-zai-san-duan-ke-yong-xing-diao-yan/</link>
+      <pubDate>Wed, 19 Sep 2018 16:03:24 +0800</pubDate>
+      
+      <guid>/posts/ipfs-zai-san-duan-ke-yong-xing-diao-yan/</guid>
+      <description>&lt;h2 id=&#34;三端指什么&#34;&gt;三端指什么&lt;/h2&gt;
+&lt;p&gt;三端指浏览器，Android, iOS ，当前绝大多数互联网应用都跑在这三个终端上，所以 IPFS 在它们上的运行成熟度直接决定了 IPFS 最终流行程度，我们有必要提前了解并做好准备。&lt;/p&gt;
+&lt;h2 id=&#34;浏览器&#34;&gt;浏览器&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;状态： 可行&lt;/li&gt;
+&lt;li&gt;语言： JS&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/ipfs/in-web-browsers&#34;&gt;https://github.com/ipfs/in-web-browsers&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/ipfs/js-ipfs&#34;&gt;https://github.com/ipfs/js-ipfs&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;android&#34;&gt;Android&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;状态： 可行&lt;/li&gt;
+&lt;li&gt;语言：kotlin&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/ligi/ipfs-api-kotlin&#34;&gt;https://github.com/ligi/ipfs-api-kotlin&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/ligi/IPFSDroid&#34;&gt;https://github.com/ligi/IPFSDroid&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;ios&#34;&gt;iOS&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;状态： 可行&lt;/li&gt;
+&lt;li&gt;语言： swift&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/ipfs/swift-ipfs-api&#34;&gt;https://github.com/ipfs/swift-ipfs-api&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;可以看到，社区很多人都在三端进行尝试，都希望 IPFS 能够在更多的平台上进行运行，尤其是移动端，这样可以大大扩充节点的数量。&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
       <title>IPFS 生态概览</title>
       <link>/posts/ipfs-sheng-tai-gai-lan/</link>
-      <pubDate>Mon, 22 Oct 2018 15:27:35 +0800</pubDate>
+      <pubDate>Wed, 22 Aug 2018 15:27:35 +0800</pubDate>
       
       <guid>/posts/ipfs-sheng-tai-gai-lan/</guid>
       <description>&lt;p&gt;要想全面了解 IPFS 就不得不提 &lt;a href=&#34;https://protocol.ai/work/&#34;&gt;Protocal labs&lt;/a&gt;，目前它主要的项目包括：&lt;/p&gt;
@@ -30,21 +216,43 @@
 &lt;blockquote&gt;
 &lt;p&gt;IPFS is a new protocol to decentralize the web. IPFS enables the creation of completely decentralized and distributed applications, using content addressing and digital signatures。&lt;/p&gt;
 &lt;/blockquote&gt;
+&lt;blockquote&gt;
 &lt;p&gt;IPFS是一种去中心化网络的新协议。 IPFS支持使用内容寻址和数字签名创建完全去中心化的分布式应用程序。&lt;/p&gt;
+&lt;/blockquote&gt;
 &lt;p&gt;可以看到， IPFS 主要作为一种网络协议，使得通过它构建完全去中心的分布式应用程序（DApp）成为可能（当然还有其他的方式，例如 ETH），但是就像传统中心化的应用，DApp 对于永久可靠性存储的需求一直都在，并且成为 DApp 能够爆发的关键一环，当然也直接决定了 IPFS 协议最终的成功。&lt;/p&gt;
 &lt;p&gt;虽然已经有不少去中心化存储网络(DSN)解决方案，但是介于方案的成熟度，性能，以及与 IPFS 整合能力各方面的考量，由 Protocal labs 自己来实现 Filecoin 的方案才是最靠谱的。这样也会大量利用到 IPFS 已有的技术，例如底层网络连接和数据交换（libp2p）以及去中心化数据的通用定义（IPLD）。&lt;/p&gt;
 &lt;p&gt;在 IPFS 技术栈中不得不提 ipfs-cluster, 它是 IPFS 的 Pinset 编排程序，通过它可以构建更大的容量的 IPFS PinSet 集群，利用它可以构建一个去中心化的永久存储系统。个人认为它和 Filecoin 关注的重点不同，因为 Filecoin 是在公链中构建带有存储激励的存储网络，而 ipfs-cluster 相当于通过自己可控的节点构建超大的 IPFS PinSet 集群，而且目前 ipfs-cluster 的成熟度高于 Filecoin。&lt;/p&gt;
 &lt;h2 id=&#34;filecoin&#34;&gt;Filecoin&lt;/h2&gt;
-&lt;p&gt;Filecoin is a cryptocurrency powered storage network. Miners earn Filecoin by providing open hard-drive space to the network, while users spend Filecoin to store their files encrypted in the decentralized network.(Filecoin 是一种加密货币驱动的存储网络。 矿工通过向网络提供开放的硬盘空间来获得Filecoin，而用户使用Filecoin来存储他们在分散网络中加密的文件。)&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Filecoin is a cryptocurrency powered storage network. Miners earn Filecoin by providing open hard-drive space to the network, while users spend Filecoin to store their files encrypted in the decentralized network.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Filecoin 是一种加密货币驱动的存储网络。 矿工通过向网络提供开放的硬盘空间来获得Filecoin，而用户使用Filecoin来存储他们在分散网络中加密的文件。&lt;/p&gt;
+&lt;/blockquote&gt;
 &lt;p&gt;DApp 是需要大量永久性去中心化存储的，这一点 IPFS 无法满足，所以 Filecoin 孕育而生，而且通过 FileCoin + IPFS 可以很好的解决整个 DApp 的内容存储和分发问题。&lt;/p&gt;
 &lt;h2 id=&#34;libp2p&#34;&gt;libp2p&lt;/h2&gt;
-&lt;p&gt;libp2p is a modular networking stack. libp2p brings together a variety of transports and peer-to-peer protocols, making it easy for developers to build large, robust p2p networks. (libp2p 是一个模块化的网络技术栈。 libp2p汇集了各种传输和点对点协议，使开发人员可以轻松构建大型，强大的 p2p 网络)。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;libp2p is a modular networking stack. libp2p brings together a variety of transports and peer-to-peer protocols, making it easy for developers to build large, robust p2p networks.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;blockquote&gt;
+&lt;p&gt;libp2p 是一个模块化的网络技术栈。 libp2p汇集了各种传输和点对点协议，使开发人员可以轻松构建大型，强大的 p2p 网络。&lt;/p&gt;
+&lt;/blockquote&gt;
 &lt;p&gt;目前去中心化的网络都是基于 p2p 来构建的，例如 BTC, ETH 和 IPFS, 因为 IPFS 包含了一个强大的 p2p 网络，那么将它抽离出来,成为一个单独的项目，能够被其它开源项目所复用是非常有价值的。&lt;/p&gt;
 &lt;h2 id=&#34;ipld&#34;&gt;IPLD&lt;/h2&gt;
-&lt;p&gt;IPLD is the data model for the Decentralized Web. It connects all data through cryptographic hashes, and makes it easy to traverse and link to.(IPLD是去中心化 Web 的数据模型。 它通过加密哈希连接所有数据，并使其易于遍历和链接)。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;IPLD is the data model for the Decentralized Web. It connects all data through cryptographic hashes, and makes it easy to traverse and link to.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;blockquote&gt;
+&lt;p&gt;IPLD是去中心化 Web 的数据模型。 它通过加密哈希连接所有数据，并使其易于遍历和链接。&lt;/p&gt;
+&lt;/blockquote&gt;
 &lt;p&gt;IPFS 属于去中心化的 Web 协议，那么底层就依赖 IPLD，这样的数据结构能够在各种去中心的网络中实现数据共享和互访，例如（IPFS 和 ETH，BTC 等）。&lt;/p&gt;
 &lt;h2 id=&#34;multiformats&#34;&gt;Multiformats&lt;/h2&gt;
-&lt;p&gt;The Multiformats Project is a collection of protocols to future-proof systems, today. Self-describing formats make your systems interoperable and upgradable.（Multiformats 项目是当今面向未来系统的协议集合。 自描述的格式使你的系统可互操作和可升级）。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;The Multiformats Project is a collection of protocols to future-proof systems, today. Self-describing formats make your systems interoperable and upgradable.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Multiformats 项目是当今面向未来系统的协议集合。 自描述的格式使你的系统可互操作和可升级。&lt;/p&gt;
+&lt;/blockquote&gt;
 &lt;p&gt;Multiformats 主要强调其自描述性，故名思议可以通过格式就能知道其中含义，那么作为一组协议集合，它目前包含了：&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;multihash：自描述的 hash，主要用于 IPFS 中对于内容加密 hash 的描述。&lt;/li&gt;
