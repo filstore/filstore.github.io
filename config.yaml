@@ -1,0 +1,41 @@
+languageCode: "en-us"
+baseUrl: "/"
+title: "FILVIP"
+theme: "anubis"
+paginate: 10
+disqusShortname: 
+googleAnalytics: UA-74641927-1
+enableRobotsTXT: true
+
+menu:
+  main:
+  - identifier: ipfs
+    name: IPFS
+    title: IPFS
+    url: /tags/ipfs
+    weight: 2
+  - identifier: filecoin
+    name: FileCoin
+    title: FileCoin
+    url: /tags/filecoin
+    weight: 3
+  - identifier: archive
+    name: Archive
+    title: Archive
+    url: /posts/
+    weight: 4
+  - identifier: about
+    name: About
+    title: About
+    url: /about
+    weight: 5
+
+params:
+  author: filstore.vip
+  description: 
+  images:
+    - images/og-featured.png # relative path to "static" directory
+  customCSS:
+    - css/my.css # relative path to "static" directory
+  dateFormat: "2006-01-02"
+  paginationSinglePost: false
