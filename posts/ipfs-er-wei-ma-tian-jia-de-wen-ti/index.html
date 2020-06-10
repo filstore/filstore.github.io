@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<title>IPFS 二维码添加的问题 - FILVIP</title>
+<meta name="description" content="">
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="/favicon.png">
+
+<link rel="stylesheet" href="/css/style.css?rnd=1591790424" />
+
+<link rel="stylesheet" href="/css/my.css?rnd=1591790424">
+
+<meta property="og:title" content="IPFS 二维码添加的问题" />
+<meta property="og:description" content="本文主要讨论如何将一个 IPFS 的二维码添加到一个 IPFS 博客中。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/posts/ipfs-er-wei-ma-tian-jia-de-wen-ti/" />
+<meta property="og:image" content="/images/og-featured.png"/>
+<meta property="article:published_time" content="2018-08-09T21:01:37+08:00" />
+<meta property="article:modified_time" content="2018-08-09T21:01:37+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="/images/og-featured.png"/>
+
+<meta name="twitter:title" content="IPFS 二维码添加的问题"/>
+<meta name="twitter:description" content="本文主要讨论如何将一个 IPFS 的二维码添加到一个 IPFS 博客中。"/>
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header> 
+            
+                <h1 class="site-header">
+    <a href="/">FILVIP</a>
+</h1>
+<nav>
+    
+    
+    <a class="" href="/tags/ipfs" title="IPFS">IPFS</a>
+    
+    <a class="" href="/tags/filecoin" title="FileCoin">FileCoin</a>
+    
+    <a class="" href="/posts/" title="Archive">Archive</a>
+    
+    <a class="" href="/about" title="About">About</a>
+    
+</nav>
+
+            
+        </header>
+        <main id="main" tabindex="-1"> 
+            
+
+    <article class="post">
+        <header>
+            <h1 class="post-title">IPFS 二维码添加的问题</h1>
+        </header>
+        <div class="content">
+            <p>前段时间在知乎上看到「飞向未来」大大早期文章 <a href="https://zhuanlan.zhihu.com/p/32651288">什么是IPFS?(三)</a> 中有这样一段描述：</p>
+<p><img src="/images/ipfs/ipfs03.png" alt="ipfs03.png"></p>
+<p>但是真的是这样吗？难道我们真的没有办法在一个网站中插入对应二维码？</p>
+<blockquote>
+<p>结论当然是可以，因为我们有 IPNS。</p>
+</blockquote>
+<p>下面我将介绍具体的实现步骤：</p>
+<h3 id="step-1--占坑">Step 1:  占坑</h3>
+<p>创建一个目录，添加到 IPFS 网络，先做好 IPNS 映射，这个过程就相当于在逻辑上先定义一个网站。</p>
+<pre><code>$ mkdir demo
+$ ipfs add -r demo
+
+added QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn demo
+ 0 B / 68 B [---------------------------------------------------------------------------]   0.00%
+
+$ ipfs name public QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
+Published to QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe: /ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
+</code></pre><p>此时我们已经可以通过 ipns/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe 来访问网站了。</p>
+<h3 id="step-2-添加网页">Step 2: 添加网页</h3>
+<p>在 demo 目录下创建 <code>a.html</code> 文件，并且在 <code>a.html</code> 中添加如下内容：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-html" data-lang="html"><span style="color:#75715e">&lt;!DOCTYPE html&gt;</span>
+&lt;<span style="color:#f92672">html</span>&gt;
+&lt;<span style="color:#f92672">head</span>&gt;
+&lt;<span style="color:#f92672">meta</span> <span style="color:#a6e22e">charset</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;UTF-8&#34;</span>&gt;
+&lt;<span style="color:#f92672">title</span>&gt;qrcode demo&lt;/<span style="color:#f92672">title</span>&gt;
+&lt;/<span style="color:#f92672">head</span>&gt;
+
+&lt;<span style="color:#f92672">body</span> <span style="color:#a6e22e">style</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;text-align:center;&#34;</span>&gt;
+    &lt;<span style="color:#f92672">h1</span>&gt;this is a ipfs page with qrcode&lt;/<span style="color:#f92672">h1</span>&gt;&lt;<span style="color:#f92672">br</span>/&gt;
+    &lt;<span style="color:#f92672">img</span> <span style="color:#a6e22e">src</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;a.png&#34;</span> /&gt;
+&lt;/<span style="color:#f92672">body</span>&gt;
+&lt;/<span style="color:#f92672">html</span>&gt;
+</code></pre></div><h3 id="step-3添加二维码">Step 3：添加二维码</h3>
+<p>随便找一个二维码生成器生成 <code>a.html</code> 对应 IPNS 二维码，并存放为 <code>demo/a.png</code> 文件。</p>
+<p><img src="/images/ipfs/ipns01.png" alt="ipns01.png"></p>
+<p>此时 <code>demo</code> 目录结构是这样：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ tree demo/
+
+demo/
+├── a.png
+└── a.html
+
+<span style="color:#ae81ff">0</span> directories, <span style="color:#ae81ff">2</span> files
+</code></pre></div><h3 id="step-4-更新并发布网站">Step 4: 更新并发布网站</h3>
+<p>依次执行：</p>
+<pre><code>$ ipfs add -r demo
+
+added QmNU5XXUpDnAXv88nDTcafKFY3h5LhKLJnkf2XBBGtc8wW demo/a.html
+added QmcZhDddySHAdaJa9zKBRkY9SBrDJTWsq5Fn5chCDPXz3j demo/a.png
+added QmSUCYnZ6SrGaAs8gaAAmf5tgjYAGMKjwMX3r4k7FxvCx1 demo
+ 2.23 KiB / 2.36 KiB [==============================================================&gt;---]  94.37%
+
+$ ipfs name publish QmSUCYnZ6SrGaAs8gaAAmf5tgjYAGMKjwMX3r4k7FxvCx1
+</code></pre><p>最后打开浏览器访问地址 <a href="https://ipfs.io/ipns/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe/a.html">https://ipfs.io/ipns/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe/a.html</a> 将看到刚发布的 <code>a.html</code> 页面，并包含对应二维码。</p>
+<p><img src="/images/ipfs/ipns02.png" alt="ipns02.png"></p>
+<p>到此为止，这个先有鸡还是先有蛋的问题已被我们解决，通过此例可以让我们加深对 IPNS 的认识。</p>
+
+        </div>
+        
+
+    
+
+
+<div class="post-info">
+    
+        <div class="post-date">2018-08-09</div>
+    
+    <div class="post-taxonomies">
+        
+            
+                <ul class="post-tags">
+                    
+                        <li><a href="/tags/ipfs">#ipfs</a></li>
+                    
+                </ul>
+        
+    </div>
+</div>
+
+    </article>
+
+    
+
+    
+
+
+        </main>
+        <footer>
+            
+                
+                
+
+                <p>© filstore.vip, 2020<br>
+Powered by <a target="_blank" href="https://gohugo.io/">Hugo</a>, theme <a target="_blank" href="https://github.com/mitrichius/hugo-theme-anubis">Anubis</a>.
+</p>
+            
+        </footer>
+    </div>
+</body>
+</html>

@@ -436,6 +436,241 @@ ipfs daemon
     </item>
     
     <item>
+      <title>IPFS 二维码添加的问题</title>
+      <link>/posts/ipfs-er-wei-ma-tian-jia-de-wen-ti/</link>
+      <pubDate>Thu, 09 Aug 2018 21:01:37 +0800</pubDate>
+      
+      <guid>/posts/ipfs-er-wei-ma-tian-jia-de-wen-ti/</guid>
+      <description>&lt;p&gt;前段时间在知乎上看到「飞向未来」大大早期文章 &lt;a href=&#34;https://zhuanlan.zhihu.com/p/32651288&#34;&gt;什么是IPFS?(三)&lt;/a&gt; 中有这样一段描述：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/ipfs03.png&#34; alt=&#34;ipfs03.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;但是真的是这样吗？难道我们真的没有办法在一个网站中插入对应二维码？&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;结论当然是可以，因为我们有 IPNS。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;下面我将介绍具体的实现步骤：&lt;/p&gt;
+&lt;h3 id=&#34;step-1--占坑&#34;&gt;Step 1:  占坑&lt;/h3&gt;
+&lt;p&gt;创建一个目录，添加到 IPFS 网络，先做好 IPNS 映射，这个过程就相当于在逻辑上先定义一个网站。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ mkdir demo
+$ ipfs add -r demo
+
+added QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn demo
+ 0 B / 68 B [---------------------------------------------------------------------------]   0.00%
+
+$ ipfs name public QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
+Published to QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe: /ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;此时我们已经可以通过 ipns/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe 来访问网站了。&lt;/p&gt;
+&lt;h3 id=&#34;step-2-添加网页&#34;&gt;Step 2: 添加网页&lt;/h3&gt;
+&lt;p&gt;在 demo 目录下创建 &lt;code&gt;a.html&lt;/code&gt; 文件，并且在 &lt;code&gt;a.html&lt;/code&gt; 中添加如下内容：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-html&#34; data-lang=&#34;html&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&amp;lt;!DOCTYPE html&amp;gt;&lt;/span&gt;
+&amp;lt;&lt;span style=&#34;color:#f92672&#34;&gt;html&lt;/span&gt;&amp;gt;
+&amp;lt;&lt;span style=&#34;color:#f92672&#34;&gt;head&lt;/span&gt;&amp;gt;
+&amp;lt;&lt;span style=&#34;color:#f92672&#34;&gt;meta&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;charset&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;UTF-8&amp;#34;&lt;/span&gt;&amp;gt;
+&amp;lt;&lt;span style=&#34;color:#f92672&#34;&gt;title&lt;/span&gt;&amp;gt;qrcode demo&amp;lt;/&lt;span style=&#34;color:#f92672&#34;&gt;title&lt;/span&gt;&amp;gt;
+&amp;lt;/&lt;span style=&#34;color:#f92672&#34;&gt;head&lt;/span&gt;&amp;gt;
+
+&amp;lt;&lt;span style=&#34;color:#f92672&#34;&gt;body&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;style&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;text-align:center;&amp;#34;&lt;/span&gt;&amp;gt;
+    &amp;lt;&lt;span style=&#34;color:#f92672&#34;&gt;h1&lt;/span&gt;&amp;gt;this is a ipfs page with qrcode&amp;lt;/&lt;span style=&#34;color:#f92672&#34;&gt;h1&lt;/span&gt;&amp;gt;&amp;lt;&lt;span style=&#34;color:#f92672&#34;&gt;br&lt;/span&gt;/&amp;gt;
+    &amp;lt;&lt;span style=&#34;color:#f92672&#34;&gt;img&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;src&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;a.png&amp;#34;&lt;/span&gt; /&amp;gt;
+&amp;lt;/&lt;span style=&#34;color:#f92672&#34;&gt;body&lt;/span&gt;&amp;gt;
+&amp;lt;/&lt;span style=&#34;color:#f92672&#34;&gt;html&lt;/span&gt;&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id=&#34;step-3添加二维码&#34;&gt;Step 3：添加二维码&lt;/h3&gt;
+&lt;p&gt;随便找一个二维码生成器生成 &lt;code&gt;a.html&lt;/code&gt; 对应 IPNS 二维码，并存放为 &lt;code&gt;demo/a.png&lt;/code&gt; 文件。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/ipns01.png&#34; alt=&#34;ipns01.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;此时 &lt;code&gt;demo&lt;/code&gt; 目录结构是这样：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ tree demo/
+
+demo/
+├── a.png
+└── a.html
+
+&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; directories, &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt; files
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id=&#34;step-4-更新并发布网站&#34;&gt;Step 4: 更新并发布网站&lt;/h3&gt;
+&lt;p&gt;依次执行：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs add -r demo
+
+added QmNU5XXUpDnAXv88nDTcafKFY3h5LhKLJnkf2XBBGtc8wW demo/a.html
+added QmcZhDddySHAdaJa9zKBRkY9SBrDJTWsq5Fn5chCDPXz3j demo/a.png
+added QmSUCYnZ6SrGaAs8gaAAmf5tgjYAGMKjwMX3r4k7FxvCx1 demo
+ 2.23 KiB / 2.36 KiB [==============================================================&amp;gt;---]  94.37%
+
+$ ipfs name publish QmSUCYnZ6SrGaAs8gaAAmf5tgjYAGMKjwMX3r4k7FxvCx1
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;最后打开浏览器访问地址 &lt;a href=&#34;https://ipfs.io/ipns/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe/a.html&#34;&gt;https://ipfs.io/ipns/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe/a.html&lt;/a&gt; 将看到刚发布的 &lt;code&gt;a.html&lt;/code&gt; 页面，并包含对应二维码。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/ipns02.png&#34; alt=&#34;ipns02.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;到此为止，这个先有鸡还是先有蛋的问题已被我们解决，通过此例可以让我们加深对 IPNS 的认识。&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>使用 IPFS 搭建个人博客</title>
+      <link>/posts/shi-yong-ipfs-da-jian-ge-ren-bo-ke/</link>
+      <pubDate>Wed, 08 Aug 2018 20:35:00 +0800</pubDate>
+      
+      <guid>/posts/shi-yong-ipfs-da-jian-ge-ren-bo-ke/</guid>
+      <description>&lt;p&gt;本文主要讲解如何使用 IPFS 搭建个人博客，从而实现个人博客在网络中的“永生”。&lt;/p&gt;
+&lt;p&gt;主要内容：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;IPFS 简介&lt;/li&gt;
+&lt;li&gt;IPFS 安装和基本使用&lt;/li&gt;
+&lt;li&gt;IPFS 的内容发布&lt;/li&gt;
+&lt;li&gt;IPNS 的内容发布&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;ipfs-简介&#34;&gt;IPFS 简介&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&#34;https://ipfs.io/&#34;&gt;IPFS&lt;/a&gt; 是 InterPlanetary File System 的简称，中文名叫星际文件系统，是一个旨在创建持久且分布式存储和共享文件的网络传输协议。&lt;/p&gt;
+&lt;p&gt;它是一种内容可寻址的对等超媒体分发协议，在 IPFS 网络中的所有节点将构成一个分布式文件系统，使用点对点的超媒体协议，从而让网络更快、更安全、更开放。&lt;/p&gt;
+&lt;h3 id=&#34;ipfs-安装&#34;&gt;IPFS 安装&lt;/h3&gt;
+&lt;p&gt;访问页面 &lt;a href=&#34;https://github.com/ipfs/go-ipfs/releases&#34;&gt;https://github.com/ipfs/go-ipfs/releases&lt;/a&gt; 下载对应版本，解压，运行安装文件即可。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.17/go-ipfs_v0.4.17_darwin-amd64.tar.gz
+
+$ tar xvf go-ipfs_v0.4.17_darwin-amd64.tar.gz
+$ cd go-ipfs &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;amp;&lt;/span&gt; ./install.sh
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;安装成功后，执行 &lt;code&gt;ipfs version&lt;/code&gt; 你将看到类似内容：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ ipfs version
+
+ipfs version 0.4.17
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;注意：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;命令 &lt;code&gt;ipfs -h&lt;/code&gt; 来查看更多命令&lt;/li&gt;
+&lt;li&gt;命令 &lt;code&gt;cat ~/.ipfs/config&lt;/code&gt; 可以查看所有默认配置项&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;新建-ipfs-节点&#34;&gt;新建 IPFS 节点&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;运行 &lt;code&gt;ipfs init&lt;/code&gt; 初始化节点&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ ipfs init
+initializing IPFS node at /Users/sjy/.ipfs
+generating 2048-bit RSA keypair...done
+peer identity: QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe
+to get started, enter:
+
+	ipfs cat /ipfs/QmS4ustL54uo8FzR9455qaxZwuMiUhyvMcX9Ba8nUH4uVv/readme
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;初始化成功后，可以使用 &lt;code&gt;ipfs cat&lt;/code&gt; 命令来查看 IPFS 网络中的文件，例如：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs cat /ipfs/QmS4ustL54uo8FzR9455qaxZwuMiUhyvMcX9Ba8nUH4uVv/readme
+Hello and Welcome to IPFS!
+
+██╗██████╗ ███████╗███████╗
+██║██╔══██╗██╔════╝██╔════╝
+██║██████╔╝█████╗  ███████╗
+██║██╔═══╝ ██╔══╝  ╚════██║
+██║██║     ██║     ███████║
+╚═╝╚═╝     ╚═╝     ╚══════╝
+
+If you&#39;re seeing this, you have successfully installed
+IPFS and are now interfacing with the ipfs merkledag!
+
+ -------------------------------------------------------
+| Warning:                                              |
+|   This is alpha software. Use at your own discretion! |
+....
+&lt;/code&gt;&lt;/pre&gt;&lt;ul&gt;
+&lt;li&gt;使用 &lt;code&gt;ipfs id&lt;/code&gt; 查看节点基本信息&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs id
+
+{
+	&amp;quot;ID&amp;quot;: &amp;quot;QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&amp;quot;,
+	&amp;quot;PublicKey&amp;quot;: &amp;quot;...&amp;quot;,
+	&amp;quot;Addresses&amp;quot;: [
+		&amp;quot;/ip4/127.0.0.1/tcp/4001/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&amp;quot;,
+		&amp;quot;/ip4/100.100.58.79/tcp/4001/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&amp;quot;,
+		&amp;quot;/ip4/100.100.6.124/tcp/4001/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&amp;quot;,
+		&amp;quot;/ip6/::1/tcp/4001/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&amp;quot;,
+		&amp;quot;/ip4/103.20.32.163/tcp/4001/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&amp;quot;
+	],
+	&amp;quot;AgentVersion&amp;quot;: &amp;quot;go-ipfs/0.4.17/&amp;quot;,
+	&amp;quot;ProtocolVersion&amp;quot;: &amp;quot;ipfs/0.1.0&amp;quot;
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;ul&gt;
+&lt;li&gt;运行 &lt;code&gt;ipfs daemon&lt;/code&gt; 连接网络&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs daemon
+Initializing daemon...
+Swarm listening on /ip4/100.100.58.79/tcp/4001
+Swarm listening on /ip4/100.100.6.124/tcp/4001
+Swarm listening on /ip4/127.0.0.1/tcp/4001
+Swarm listening on /ip6/::1/tcp/4001
+Swarm listening on /p2p-circuit/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe
+Swarm announcing /ip4/100.100.58.79/tcp/4001
+Swarm announcing /ip4/100.100.6.124/tcp/4001
+Swarm announcing /ip4/127.0.0.1/tcp/4001
+Swarm announcing /ip6/::1/tcp/4001
+Error: serveHTTPApi: manet.Listen(/ip4/127.0.0.1/tcp/5001) failed: listen tcp4 127.0.0.1:5001: bind: address already in use
+Received interrupt signal, shutting down...
+(Hit ctrl-c again to force-shutdown the daemon.)
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;有时你会遇到端口冲突的问题，可以使用 &lt;code&gt;vi ~/.ipfs/config&lt;/code&gt; 修改默认配置来解决，相关内容为：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// from
+&amp;quot;API&amp;quot;: &amp;quot;/ip4/127.0.0.1/tcp/5001&amp;quot;,
+&amp;quot;Gateway&amp;quot;: &amp;quot;/ip4/127.0.0.1/tcp/8080&amp;quot;
+
+// to 
+&amp;quot;API&amp;quot;: &amp;quot;/ip4/127.0.0.1/tcp/9091&amp;quot;,
+&amp;quot;Gateway&amp;quot;: &amp;quot;/ip4/127.0.0.1/tcp/9090&amp;quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;保存修改后，再次运行 &lt;code&gt;ipfs daemon&lt;/code&gt;，可以看到如下输出：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs daemon
+
+Initializing daemon...
+Swarm listening on /ip4/100.100.58.79/tcp/4001
+Swarm listening on /ip4/100.100.6.124/tcp/4001
+Swarm listening on /ip4/127.0.0.1/tcp/4001
+Swarm listening on /ip6/::1/tcp/4001
+Swarm listening on /p2p-circuit/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe
+Swarm announcing /ip4/100.100.58.79/tcp/4001
+Swarm announcing /ip4/100.100.6.124/tcp/4001
+Swarm announcing /ip4/127.0.0.1/tcp/4001
+Swarm announcing /ip6/::1/tcp/4001
+API server listening on /ip4/127.0.0.1/tcp/9091
+Gateway (readonly) server listening on /ip4/127.0.0.1/tcp/9090
+Daemon is ready
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;然后打开浏览器访问 &lt;code&gt;http://localhost:9091/webui&lt;/code&gt; 可以看到如下内容：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/webui.png&#34; alt=&#34;webui&#34;&gt;&lt;/p&gt;
+&lt;p&gt;这说明我们已经成功加入 IPFS 网络。&lt;/p&gt;
+&lt;h3 id=&#34;添加个人博客&#34;&gt;添加个人博客&lt;/h3&gt;
+&lt;p&gt;长期以来我都是使用 Jekyll 来写博客，这里就用它来示范，当然大家也可以使用其它静态网站生成器，例如（hugo）。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;使用 &lt;code&gt;jekyll build&lt;/code&gt; 生成最新博客内容&lt;/li&gt;
+&lt;li&gt;使用 &lt;code&gt;ipfs add -r _site&lt;/code&gt; 添加博客站&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs add -r _site
+
+added QmRum1Gg9DjYm8xosqaEd2YMdYZaVjUqifNC7xEQcxgCyn _site/404.html
+added QmXMGUT9SMFa9nx4FcN5AQmPV4GBChAzUNzN2KUqJSQb5Q _site/CNAME
+added Qme8R4NpB93Tcy55vhZhgReCkaehfhB6NGcMyHWFhNjGvJ _site/Gemfile
+added QmPWR1QN9wVUtBGUm6PhwpwhuRHQXttrHufm6y8AYWzP4p _site/Gemfile.lock
+added QmXWVVA17LnCZMqsTx75hZDeFhoJRJeKWEeU3dufQUkhmo _site/LICENSE
+added Qmdvx2PCV3kQD8PvCFtsCi68mapc1fpkgS8FrQod42HxWh _site/README.md
+added QmRHRq49njYPheLBMV8RTCnuDWcapkwRBhVNWXQPvThUyh _site/about.html
+added QmPmmp8C2BaLvhFb2M43xdTgvUAtV5xREG2AAMiNpfgF2A _site/feed.xml
+added QmPE53kbhLfSPUdAkieGR4NB6aA79ojkcQVB5WgksgiCoi _site/images/404.png
+.....
+added QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR _site
+58.51 MiB / 116.73 MiB [===========================================&amp;gt;------------------------------------------]  50.13% 00m03s
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;可以看到整个网站以 &lt;code&gt;_site&lt;/code&gt; 为根目录，当前的版本为 &lt;code&gt;QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR&lt;/code&gt;，然后我们就可以通过链接 &lt;code&gt;https://ipfs.io/ipfs/QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR&lt;/code&gt; 在浏览器中查看到最新的博客内容了。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/ipfs01.jpg&#34; alt=&#34;ipfs01.jpg&#34;&gt;&lt;/p&gt;
+&lt;h3 id=&#34;发布到-ipns&#34;&gt;发布到 IPNS&lt;/h3&gt;
+&lt;p&gt;当博客更新后，会生成新的 hash，要访问最新版本的内容就需要新生成的 hash，那如何使用一个固定的链接来访问最新版本的内容呢？&lt;/p&gt;
+&lt;p&gt;这就需要使用到 IPNS，IPNS 是 IPFS 的命名系统，它允许用户使用一个私有密钥来对哈希附加一个引用，使用一个公共密钥哈希（简称 pubkeyhash）表示你的网站的最新版本。&lt;/p&gt;
+&lt;p&gt;具体操作如下：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs name publish QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR
+
+Published to QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe: /ipfs/QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;执行完命令后，我们就完成了博客和一个固定的 link 的绑定，我们可以使用 &lt;code&gt;ipfs name resolve xxx&lt;/code&gt; 来查看固定 link 绑定的版本。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs name resolve QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe
+
+/ipfs/QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;然后我们通过 ipns + 生成的固定 hash （QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe）来访问博客了，例如:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/ipfs02.jpg&#34; alt=&#34;ipfs02.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;当我们博客有更新的时候，只需要再次执行：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ jekyll build
+$ ipfs add -r _site
+$ ipfs name publish &amp;lt;最新 hash&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;并使用固定的 IPNS hash  &lt;code&gt;QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&lt;/code&gt; 来访问即可。&lt;/p&gt;
+&lt;p&gt;至此，我们基本完成了个人博客的 IPFS 发布，最后就剩的个人域名的绑定了，这个留到后面的文章来讲解。&lt;/p&gt;
+&lt;h3 id=&#34;总结&#34;&gt;总结&lt;/h3&gt;
+&lt;p&gt;我们通过 IPFS 的安装、创建网络节点、添加网站、发布固定网站，学习了 IPFS 基础概念、基本操作、基于内容寻址的访问方式、以及 IPNS 和 IPFS 的对应关系。&lt;/p&gt;
+&lt;p&gt;可以看到使用 IPFS 搭建个人博客，乃至 WIKI 等内容网站是非常高效的，大家不妨尝试一下。&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
       <title>关于我</title>
       <link>/about/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>

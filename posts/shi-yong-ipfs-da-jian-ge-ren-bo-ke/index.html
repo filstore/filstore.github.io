@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<title>使用 IPFS 搭建个人博客 - FILVIP</title>
+<meta name="description" content="">
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="/favicon.png">
+
+<link rel="stylesheet" href="/css/style.css?rnd=1591790424" />
+
+<link rel="stylesheet" href="/css/my.css?rnd=1591790424">
+
+<meta property="og:title" content="使用 IPFS 搭建个人博客" />
+<meta property="og:description" content="本文主要讲解如何使用 IPFS 搭建个人博客，从而实现个人博客在网络中的“永生”。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/posts/shi-yong-ipfs-da-jian-ge-ren-bo-ke/" />
+<meta property="og:image" content="/images/og-featured.png"/>
+<meta property="article:published_time" content="2018-08-08T20:35:00+08:00" />
+<meta property="article:modified_time" content="2018-08-08T20:35:00+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="/images/og-featured.png"/>
+
+<meta name="twitter:title" content="使用 IPFS 搭建个人博客"/>
+<meta name="twitter:description" content="本文主要讲解如何使用 IPFS 搭建个人博客，从而实现个人博客在网络中的“永生”。"/>
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header> 
+            
+                <h1 class="site-header">
+    <a href="/">FILVIP</a>
+</h1>
+<nav>
+    
+    
+    <a class="" href="/tags/ipfs" title="IPFS">IPFS</a>
+    
+    <a class="" href="/tags/filecoin" title="FileCoin">FileCoin</a>
+    
+    <a class="" href="/posts/" title="Archive">Archive</a>
+    
+    <a class="" href="/about" title="About">About</a>
+    
+</nav>
+
+            
+        </header>
+        <main id="main" tabindex="-1"> 
+            
+
+    <article class="post">
+        <header>
+            <h1 class="post-title">使用 IPFS 搭建个人博客</h1>
+        </header>
+        <div class="content">
+            <p>本文主要讲解如何使用 IPFS 搭建个人博客，从而实现个人博客在网络中的“永生”。</p>
+<p>主要内容：</p>
+<ul>
+<li>IPFS 简介</li>
+<li>IPFS 安装和基本使用</li>
+<li>IPFS 的内容发布</li>
+<li>IPNS 的内容发布</li>
+</ul>
+<h3 id="ipfs-简介">IPFS 简介</h3>
+<p><a href="https://ipfs.io/">IPFS</a> 是 InterPlanetary File System 的简称，中文名叫星际文件系统，是一个旨在创建持久且分布式存储和共享文件的网络传输协议。</p>
+<p>它是一种内容可寻址的对等超媒体分发协议，在 IPFS 网络中的所有节点将构成一个分布式文件系统，使用点对点的超媒体协议，从而让网络更快、更安全、更开放。</p>
+<h3 id="ipfs-安装">IPFS 安装</h3>
+<p>访问页面 <a href="https://github.com/ipfs/go-ipfs/releases">https://github.com/ipfs/go-ipfs/releases</a> 下载对应版本，解压，运行安装文件即可。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.17/go-ipfs_v0.4.17_darwin-amd64.tar.gz
+
+$ tar xvf go-ipfs_v0.4.17_darwin-amd64.tar.gz
+$ cd go-ipfs <span style="color:#f92672">&amp;&amp;</span> ./install.sh
+</code></pre></div><p>安装成功后，执行 <code>ipfs version</code> 你将看到类似内容：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ipfs version
+
+ipfs version 0.4.17
+</code></pre></div><p>注意：</p>
+<ul>
+<li>命令 <code>ipfs -h</code> 来查看更多命令</li>
+<li>命令 <code>cat ~/.ipfs/config</code> 可以查看所有默认配置项</li>
+</ul>
+<h3 id="新建-ipfs-节点">新建 IPFS 节点</h3>
+<ul>
+<li>运行 <code>ipfs init</code> 初始化节点</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ipfs init
+initializing IPFS node at /Users/sjy/.ipfs
+generating 2048-bit RSA keypair...done
+peer identity: QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe
+to get started, enter:
+
+	ipfs cat /ipfs/QmS4ustL54uo8FzR9455qaxZwuMiUhyvMcX9Ba8nUH4uVv/readme
+</code></pre></div><p>初始化成功后，可以使用 <code>ipfs cat</code> 命令来查看 IPFS 网络中的文件，例如：</p>
+<pre><code>$ ipfs cat /ipfs/QmS4ustL54uo8FzR9455qaxZwuMiUhyvMcX9Ba8nUH4uVv/readme
+Hello and Welcome to IPFS!
+
+██╗██████╗ ███████╗███████╗
+██║██╔══██╗██╔════╝██╔════╝
+██║██████╔╝█████╗  ███████╗
+██║██╔═══╝ ██╔══╝  ╚════██║
+██║██║     ██║     ███████║
+╚═╝╚═╝     ╚═╝     ╚══════╝
+
+If you're seeing this, you have successfully installed
+IPFS and are now interfacing with the ipfs merkledag!
+
+ -------------------------------------------------------
+| Warning:                                              |
+|   This is alpha software. Use at your own discretion! |
+....
+</code></pre><ul>
+<li>使用 <code>ipfs id</code> 查看节点基本信息</li>
+</ul>
+<pre><code>$ ipfs id
+
+{
+	&quot;ID&quot;: &quot;QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&quot;,
+	&quot;PublicKey&quot;: &quot;...&quot;,
+	&quot;Addresses&quot;: [
+		&quot;/ip4/127.0.0.1/tcp/4001/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&quot;,
+		&quot;/ip4/100.100.58.79/tcp/4001/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&quot;,
+		&quot;/ip4/100.100.6.124/tcp/4001/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&quot;,
+		&quot;/ip6/::1/tcp/4001/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&quot;,
+		&quot;/ip4/103.20.32.163/tcp/4001/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe&quot;
+	],
+	&quot;AgentVersion&quot;: &quot;go-ipfs/0.4.17/&quot;,
+	&quot;ProtocolVersion&quot;: &quot;ipfs/0.1.0&quot;
+}
+</code></pre><ul>
+<li>运行 <code>ipfs daemon</code> 连接网络</li>
+</ul>
+<pre><code>$ ipfs daemon
+Initializing daemon...
+Swarm listening on /ip4/100.100.58.79/tcp/4001
+Swarm listening on /ip4/100.100.6.124/tcp/4001
+Swarm listening on /ip4/127.0.0.1/tcp/4001
+Swarm listening on /ip6/::1/tcp/4001
+Swarm listening on /p2p-circuit/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe
+Swarm announcing /ip4/100.100.58.79/tcp/4001
+Swarm announcing /ip4/100.100.6.124/tcp/4001
+Swarm announcing /ip4/127.0.0.1/tcp/4001
+Swarm announcing /ip6/::1/tcp/4001
+Error: serveHTTPApi: manet.Listen(/ip4/127.0.0.1/tcp/5001) failed: listen tcp4 127.0.0.1:5001: bind: address already in use
+Received interrupt signal, shutting down...
+(Hit ctrl-c again to force-shutdown the daemon.)
+</code></pre><p>有时你会遇到端口冲突的问题，可以使用 <code>vi ~/.ipfs/config</code> 修改默认配置来解决，相关内容为：</p>
+<pre><code>// from
+&quot;API&quot;: &quot;/ip4/127.0.0.1/tcp/5001&quot;,
+&quot;Gateway&quot;: &quot;/ip4/127.0.0.1/tcp/8080&quot;
+
+// to 
+&quot;API&quot;: &quot;/ip4/127.0.0.1/tcp/9091&quot;,
+&quot;Gateway&quot;: &quot;/ip4/127.0.0.1/tcp/9090&quot;
+</code></pre><p>保存修改后，再次运行 <code>ipfs daemon</code>，可以看到如下输出：</p>
+<pre><code>$ ipfs daemon
+
+Initializing daemon...
+Swarm listening on /ip4/100.100.58.79/tcp/4001
+Swarm listening on /ip4/100.100.6.124/tcp/4001
+Swarm listening on /ip4/127.0.0.1/tcp/4001
+Swarm listening on /ip6/::1/tcp/4001
+Swarm listening on /p2p-circuit/ipfs/QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe
+Swarm announcing /ip4/100.100.58.79/tcp/4001
+Swarm announcing /ip4/100.100.6.124/tcp/4001
+Swarm announcing /ip4/127.0.0.1/tcp/4001
+Swarm announcing /ip6/::1/tcp/4001
+API server listening on /ip4/127.0.0.1/tcp/9091
+Gateway (readonly) server listening on /ip4/127.0.0.1/tcp/9090
+Daemon is ready
+</code></pre><p>然后打开浏览器访问 <code>http://localhost:9091/webui</code> 可以看到如下内容：</p>
+<p><img src="/images/ipfs/webui.png" alt="webui"></p>
+<p>这说明我们已经成功加入 IPFS 网络。</p>
+<h3 id="添加个人博客">添加个人博客</h3>
+<p>长期以来我都是使用 Jekyll 来写博客，这里就用它来示范，当然大家也可以使用其它静态网站生成器，例如（hugo）。</p>
+<ul>
+<li>使用 <code>jekyll build</code> 生成最新博客内容</li>
+<li>使用 <code>ipfs add -r _site</code> 添加博客站</li>
+</ul>
+<pre><code>$ ipfs add -r _site
+
+added QmRum1Gg9DjYm8xosqaEd2YMdYZaVjUqifNC7xEQcxgCyn _site/404.html
+added QmXMGUT9SMFa9nx4FcN5AQmPV4GBChAzUNzN2KUqJSQb5Q _site/CNAME
+added Qme8R4NpB93Tcy55vhZhgReCkaehfhB6NGcMyHWFhNjGvJ _site/Gemfile
+added QmPWR1QN9wVUtBGUm6PhwpwhuRHQXttrHufm6y8AYWzP4p _site/Gemfile.lock
+added QmXWVVA17LnCZMqsTx75hZDeFhoJRJeKWEeU3dufQUkhmo _site/LICENSE
+added Qmdvx2PCV3kQD8PvCFtsCi68mapc1fpkgS8FrQod42HxWh _site/README.md
+added QmRHRq49njYPheLBMV8RTCnuDWcapkwRBhVNWXQPvThUyh _site/about.html
+added QmPmmp8C2BaLvhFb2M43xdTgvUAtV5xREG2AAMiNpfgF2A _site/feed.xml
+added QmPE53kbhLfSPUdAkieGR4NB6aA79ojkcQVB5WgksgiCoi _site/images/404.png
+.....
+added QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR _site
+58.51 MiB / 116.73 MiB [===========================================&gt;------------------------------------------]  50.13% 00m03s
+</code></pre><p>可以看到整个网站以 <code>_site</code> 为根目录，当前的版本为 <code>QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR</code>，然后我们就可以通过链接 <code>https://ipfs.io/ipfs/QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR</code> 在浏览器中查看到最新的博客内容了。</p>
+<p><img src="/images/ipfs/ipfs01.jpg" alt="ipfs01.jpg"></p>
+<h3 id="发布到-ipns">发布到 IPNS</h3>
+<p>当博客更新后，会生成新的 hash，要访问最新版本的内容就需要新生成的 hash，那如何使用一个固定的链接来访问最新版本的内容呢？</p>
+<p>这就需要使用到 IPNS，IPNS 是 IPFS 的命名系统，它允许用户使用一个私有密钥来对哈希附加一个引用，使用一个公共密钥哈希（简称 pubkeyhash）表示你的网站的最新版本。</p>
+<p>具体操作如下：</p>
+<pre><code>$ ipfs name publish QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR
+
+Published to QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe: /ipfs/QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR
+</code></pre><p>执行完命令后，我们就完成了博客和一个固定的 link 的绑定，我们可以使用 <code>ipfs name resolve xxx</code> 来查看固定 link 绑定的版本。</p>
+<pre><code>$ ipfs name resolve QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe
+
+/ipfs/QmZw6t1FiWMMKgB5o4KohJ7wqHDvHRRBRvc8FmRwshejpR
+</code></pre><p>然后我们通过 ipns + 生成的固定 hash （QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe）来访问博客了，例如:</p>
+<p><img src="/images/ipfs/ipfs02.jpg" alt="ipfs02.png"></p>
+<p>当我们博客有更新的时候，只需要再次执行：</p>
+<pre><code>$ jekyll build
+$ ipfs add -r _site
+$ ipfs name publish &lt;最新 hash&gt;
+</code></pre><p>并使用固定的 IPNS hash  <code>QmR94EL86DjAuRQDdYeShG84ahqH4M39VFD8PbToiVobRe</code> 来访问即可。</p>
+<p>至此，我们基本完成了个人博客的 IPFS 发布，最后就剩的个人域名的绑定了，这个留到后面的文章来讲解。</p>
+<h3 id="总结">总结</h3>
+<p>我们通过 IPFS 的安装、创建网络节点、添加网站、发布固定网站，学习了 IPFS 基础概念、基本操作、基于内容寻址的访问方式、以及 IPNS 和 IPFS 的对应关系。</p>
+<p>可以看到使用 IPFS 搭建个人博客，乃至 WIKI 等内容网站是非常高效的，大家不妨尝试一下。</p>
+
+        </div>
+        
+
+    
+
+
+<div class="post-info">
+    
+        <div class="post-date">2018-08-08</div>
+    
+    <div class="post-taxonomies">
+        
+            
+                <ul class="post-tags">
+                    
+                        <li><a href="/tags/ipfs">#ipfs</a></li>
+                    
+                </ul>
+        
+    </div>
+</div>
+
+    </article>
+
+    
+
+    
+
+
+        </main>
+        <footer>
+            
+                
+                
+
+                <p>© filstore.vip, 2020<br>
+Powered by <a target="_blank" href="https://gohugo.io/">Hugo</a>, theme <a target="_blank" href="https://github.com/mitrichius/hugo-theme-anubis">Anubis</a>.
+</p>
+            
+        </footer>
+    </div>
+</body>
+</html>
