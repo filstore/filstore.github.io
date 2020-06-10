@@ -238,6 +238,50 @@ QmarcwWsQp5ew7jnFtqYTLgkWEWaMPde8gme5ApZQXvZkU
     </item>
     
     <item>
+      <title>IPFS peer 扩容方案</title>
+      <link>/posts/ipfs-peer-kuo-rong-fang-an/</link>
+      <pubDate>Wed, 10 Oct 2018 19:44:33 +0800</pubDate>
+      
+      <guid>/posts/ipfs-peer-kuo-rong-fang-an/</guid>
+      <description>&lt;h2 id=&#34;背景&#34;&gt;背景&lt;/h2&gt;
+&lt;p&gt;我们都知道 IPFS 默认安装在 ~/.ipfs 目录，存储空间(StorageMax) 为 10GB， 这显然无法满足生产环境的需求，毕竟现在一个机械硬盘动则就是几个TB。那我们该如何对 IPFS 单一节点的容量进行扩充，做到同时使用多个硬盘？&lt;/p&gt;
+&lt;h2 id=&#34;环境&#34;&gt;环境&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Linux 系统&lt;/li&gt;
+&lt;li&gt;三个物理硬盘盘分别为 /dev/vda1(系统盘)，/dev/vdb1（100GB），/dev/vdc1(100GB)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;方案&#34;&gt;方案&lt;/h2&gt;
+&lt;p&gt;步骤1:  使用 LVM 将两个物理硬盘 /dev/vdb1 和 /dev/vdc1 组成同一物理卷组，最后再再物理卷组中创建逻辑卷组 （LV），具体命令如下：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 创建物理卷（PV）&lt;/span&gt;
+pvcreate /dev/sdb1
+pvcreate /dev/sdc1
+  
+&lt;span style=&#34;color:#75715e&#34;&gt;# 查看已经创建好的物理卷&lt;/span&gt;
+pvdisplay
+  
+&lt;span style=&#34;color:#75715e&#34;&gt;# 创建物理卷组&lt;/span&gt;
+vgcreate IPFS /dev/sdb1 /dev/sdc1
+  
+&lt;span style=&#34;color:#75715e&#34;&gt;#创建逻辑卷（LV）&lt;/span&gt;
+lvcreate -L 195G IPFS -n IPFS
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;此时，现在你的逻辑卷应该已经在 /dev/mapper/ 和 &lt;em&gt;/dev/YourVolumeGroupName&lt;/em&gt; 中了。&lt;/p&gt;
+&lt;p&gt;步骤2:  挂载到目录 /IPFS ：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;mkdir /IPFS
+mkfs.ext4 /dev/mapper/VolGroup00-lvolhome
+mount /dev/mapper/VolGroup00-lvolhome /IPFS
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;步骤3: 设置环境变量 IPFS_PATH, 指向挂在的目录：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;export IPFS_PATH&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;/IPFS
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;步骤4:  ipfs 初始化、配置、启动应用&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;ipfs init
+vi /IPFS/config &lt;span style=&#34;color:#75715e&#34;&gt;# 修改 StorageMax 参数，设置大小为 190GB，具体按照自己的磁盘大小设置。&lt;/span&gt;
+ipfs daemon
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;此时你将看到 ipfs 运行在了 /IPFS 目录，并且所有数据 blocks 存储在了 /IPFS/blocks ， 整个 ipfs 可以用的数据空间为 190 GB。&lt;/p&gt;
+&lt;h2 id=&#34;总结&#34;&gt;总结&lt;/h2&gt;
+&lt;p&gt;我们通过 LVM 将多个物理硬盘连成物理硬盘组，再将磁盘组划分为一个大容量的逻辑卷，并将该卷挂载到我们的 IPFS_PATH 目录，从而使 IPFS 节点可以同时使用多个硬盘的存储空间。&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
       <title>IPFS GC研究</title>
       <link>/posts/ipfs-cun-chu-kong-jian-gc/</link>
       <pubDate>Tue, 25 Sep 2018 16:26:01 +0800</pubDate>
