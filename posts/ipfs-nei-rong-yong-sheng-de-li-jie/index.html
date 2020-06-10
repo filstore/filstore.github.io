@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<title>IPFS 内容永生的理解？ - FILVIP</title>
+<meta name="description" content="">
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="/favicon.png">
+
+<link rel="stylesheet" href="/css/style.css?rnd=1591790827" />
+
+<link rel="stylesheet" href="/css/my.css?rnd=1591790827">
+
+<meta property="og:title" content="IPFS 内容永生的理解？" />
+<meta property="og:description" content="本文主要讨论 IPFS 内容永生的话题，到底存在 IPFS 网络中的内容是否可以永远存在，那我们又该注意什么呢？" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/posts/ipfs-nei-rong-yong-sheng-de-li-jie/" />
+<meta property="og:image" content="/images/og-featured.png"/>
+<meta property="article:published_time" content="2019-01-18T18:18:50+08:00" />
+<meta property="article:modified_time" content="2019-01-18T18:18:50+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="/images/og-featured.png"/>
+
+<meta name="twitter:title" content="IPFS 内容永生的理解？"/>
+<meta name="twitter:description" content="本文主要讨论 IPFS 内容永生的话题，到底存在 IPFS 网络中的内容是否可以永远存在，那我们又该注意什么呢？"/>
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header> 
+            
+                <h1 class="site-header">
+    <a href="/">FILVIP</a>
+</h1>
+<nav>
+    
+    
+    <a class="" href="/tags/ipfs" title="IPFS">IPFS</a>
+    
+    <a class="" href="/tags/filecoin" title="FileCoin">FileCoin</a>
+    
+    <a class="" href="/posts/" title="Archive">Archive</a>
+    
+    <a class="" href="/about" title="About">About</a>
+    
+</nav>
+
+            
+        </header>
+        <main id="main" tabindex="-1"> 
+            
+
+    <article class="post">
+        <header>
+            <h1 class="post-title">IPFS 内容永生的理解？</h1>
+        </header>
+        <div class="content">
+            <h2 id="前言">前言</h2>
+<p>IPFS <a href="https://github.com/ipfs/papers/raw/master/ipfs-cap2pfs/ipfs-p2p-file-system.pdf">白皮书</a>中提到， IPFS 甚至是一个 <code>Permanent</code> 的网络，那是否存储在 IPFS 网络中的内容也可以永生，永远不丢失呢？</p>
+<p>显然不是，因为内容最终都需要存储在物理磁盘上，如果全网中能够提供该文件下载的节点都下线或者磁盘损坏（冷门数据，内容提供节点较少），那在整个网络中就再也无法下载完该文件的完整内容了。</p>
+<p>今天我就遇到这样的问题，下面我会来具体讲讲整个过程，以及我对 IPFS 内容“永生”新的理解。</p>
+<h2 id="背景">背景</h2>
+<p>我们<a href="https://docs.jdcloud.com/cn/object-storage-service/edgestorage">边缘存储</a> 产品本周新上了一个功能，在进行任务迁移的时候可以显示进度百分比。</p>
+<p>我在<a href="https://zhuanlan.zhihu.com/p/35342854">IPFS 看片指南：几部IPFS网络中的电影</a>中找了一个叫做<strong>勇往直前</strong>的文件，它的  CID 是 <code>QmZRJevYhADpXmCGGF6eCcP1afNEYFahDW5jxje3iyyCJS</code>，大小为 1582221058 个字节（约 1.48GB）。</p>
+<p>在迁移到京东对象存储的过程中，发现其进度一直停留在20%，重试多次依然如此，如下图：</p>
+<p><img src="/images/ipfs/content/01.jpg" alt="ipfs/content/01.jpg"></p>
+<p>这到底是怎么回事呢？我决定弄个明白。</p>
+<h2 id="定位问题">定位问题</h2>
+<h4 id="step1-确定已迁移字节数">Step1: 确定已迁移字节数</h4>
+<p>因为数据库记录了已迁移的字节数，根据任务 ID 很容易拿到结果是 <code>322699264</code> 字节。</p>
+<h4 id="step2-确定拉取失败的-cid">Step2: 确定拉取失败的 CID</h4>
+<p>众所周知 IPFS 对象是一棵树状结构，它具有以下特点：</p>
+<ul>
+<li>每个节点下面最多包含174个节点。</li>
+<li>文件的数据都存在叶子节点上，每个叶子节点默认存储 256KB 字节。</li>
+</ul>
+<p>所以<strong>勇往直前</strong>这个电影 IPFS 的组成是一棵三层的树，结构如下图：</p>
+<p><img src="/images/ipfs/content/03.png" alt="03.png"></p>
+<p>其中根节点的 CID 是 <code>QmZRJe...CJS</code>；第二层除最后一个节点都存储了43.5MB内容、包含174个存储256KB内容的叶子节点。</p>
+<p>因为 IPFS 内容的读取是顺序的，所以根据已经迁移的字节数很容易计算出失败的块在第二层和第三层的索引位置：</p>
+<pre><code>第二层节点位置： (322699264 / 45613056) + 1 = 8
+第三层节点位置：(322699264 % 45613056) / 262144 + 1 = 14
+</code></pre><p>备注： 数组下标 = 位置-1</p>
+<p>下面我们通过 IPFS 的命令找到对应的 CID。</p>
+<p>a. 首先根据文件 Root CID 查询第二层的所有节点（Links）：</p>
+<pre><code>ipfs object get QmZRJevYhADpXmCGGF6eCcP1afNEYFahDW5jxje3iyyCJS
+</code></pre><p>命令输出内容如下：</p>
+<p><img src="/images/ipfs/content/02.png" alt="ipfs/content/02.png"></p>
+<p>所得结果中 Links[7] 的 CID 是 <code>QmcfWDphyxf92EUv8DrHxvPDRzejeWg192cADyjyfiq33b</code></p>
+<p>b. 继续查询第三层的所有节点（Links）:</p>
+<pre><code>ipfs object get QmcfWDphyxf92EUv8DrHxvPDRzejeWg192cADyjyfiq33b
+</code></pre><p>命令输出内容如下：</p>
+<p><img src="/images/ipfs/content/04.png" alt="ipfs/content/04.png"></p>
+<p>所得结果中 Links[13] 的 CID 是 <code>QmNMjt6k7qXLtiDBHzsbBzmUJ6WJ6Aqx6VP3Uwje6Crnta</code>，这个就是无法拉取到内容的起始 Block CID。 使用 <code>ipfs dht findprovs</code> 命令确认全网确实没有能够提供内容的节点。</p>
+<p>它前一个块和后一个块的 CID 分别是 <code>QmfMcounLQZCXaaUESkCWxZXLnoSyXfurpqxayMJALdK9w</code> 和 <code>QmW48B3yM7KdB3HxDGWFy3XNY1Fi9rEETZLSrPtkMStEDw</code>，前一个块能够查询到内容提供者：</p>
+<pre><code>ipfs dht findprovs QmfMcounLQZCXaaUESkCWxZXLnoSyXfurpqxayMJALdK9w
+</code></pre><p>命令输出内容如下：</p>
+<p><img src="/images/ipfs/content/05.png" alt="05.png"></p>
+<p>后一个块也无法查询到内容提供者。为什么会出现这样的结果呢？我的猜测是这样：</p>
+<ul>
+<li>该内容是分享在 IPFS 网络中的大文件（电影），大家在尝试播放观看该文件的时候，并没有将电影看完（缓存完全），最大缓存的位置就是拉取失败的块的前一个块的位置。</li>
+<li>首次提供该内容的节点已下线或者内容清理，GC将原始内容清除，所以全网中就再也找不到该文件的全部内容了。</li>
+</ul>
+<h2 id="内容永生的理解">内容“永生”的理解</h2>
+<ul>
+<li>IPFS 网络中的内容通常并不会永久能访问到。</li>
+<li>使用 <code>ipfs dht findprovs</code> 命令查询到某个 CID 存在的节点，并不一定能够提供该文件的完整内容，它很有可能只是记录了该文件的元信息，真实的数据块（叶子节点）有损坏。</li>
+<li>如果想要使自己的内容在 IPFS 网络中“永生”，一定永远至少存在一个能够提供该文件完整内容的节点，就是我们的产品，<a href="https://docs.jdcloud.com/cn/object-storage-service/edgestorage">京东云边缘存储</a>存在的价值，有能力帮助你在 IPFS 网络中永久 Pin 住某个特定的文件。</li>
+</ul>
+
+        </div>
+        
+
+    
+
+
+<div class="post-info">
+    
+        <div class="post-date">2019-01-18</div>
+    
+    <div class="post-taxonomies">
+        
+            
+                <ul class="post-tags">
+                    
+                        <li><a href="/tags/ipfs">#ipfs</a></li>
+                    
+                </ul>
+        
+    </div>
+</div>
+
+    </article>
+
+    
+
+    
+
+
+        </main>
+        <footer>
+            
+                
+                
+
+                <p>© filstore.vip, 2020<br>
+Powered by <a target="_blank" href="https://gohugo.io/">Hugo</a>, theme <a target="_blank" href="https://github.com/mitrichius/hugo-theme-anubis">Anubis</a>.
+</p>
+            
+        </footer>
+    </div>
+</body>
+</html>

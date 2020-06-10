@@ -6,10 +6,71 @@
     <description>FILVIP</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 18 Jan 2019 16:10:41 +0800</lastBuildDate>
+    <lastBuildDate>Fri, 18 Jan 2019 18:18:50 +0800</lastBuildDate>
     
     <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>IPFS 内容永生的理解？</title>
+      <link>/posts/ipfs-nei-rong-yong-sheng-de-li-jie/</link>
+      <pubDate>Fri, 18 Jan 2019 18:18:50 +0800</pubDate>
+      
+      <guid>/posts/ipfs-nei-rong-yong-sheng-de-li-jie/</guid>
+      <description>&lt;h2 id=&#34;前言&#34;&gt;前言&lt;/h2&gt;
+&lt;p&gt;IPFS &lt;a href=&#34;https://github.com/ipfs/papers/raw/master/ipfs-cap2pfs/ipfs-p2p-file-system.pdf&#34;&gt;白皮书&lt;/a&gt;中提到， IPFS 甚至是一个 &lt;code&gt;Permanent&lt;/code&gt; 的网络，那是否存储在 IPFS 网络中的内容也可以永生，永远不丢失呢？&lt;/p&gt;
+&lt;p&gt;显然不是，因为内容最终都需要存储在物理磁盘上，如果全网中能够提供该文件下载的节点都下线或者磁盘损坏（冷门数据，内容提供节点较少），那在整个网络中就再也无法下载完该文件的完整内容了。&lt;/p&gt;
+&lt;p&gt;今天我就遇到这样的问题，下面我会来具体讲讲整个过程，以及我对 IPFS 内容“永生”新的理解。&lt;/p&gt;
+&lt;h2 id=&#34;背景&#34;&gt;背景&lt;/h2&gt;
+&lt;p&gt;我们&lt;a href=&#34;https://docs.jdcloud.com/cn/object-storage-service/edgestorage&#34;&gt;边缘存储&lt;/a&gt; 产品本周新上了一个功能，在进行任务迁移的时候可以显示进度百分比。&lt;/p&gt;
+&lt;p&gt;我在&lt;a href=&#34;https://zhuanlan.zhihu.com/p/35342854&#34;&gt;IPFS 看片指南：几部IPFS网络中的电影&lt;/a&gt;中找了一个叫做&lt;strong&gt;勇往直前&lt;/strong&gt;的文件，它的  CID 是 &lt;code&gt;QmZRJevYhADpXmCGGF6eCcP1afNEYFahDW5jxje3iyyCJS&lt;/code&gt;，大小为 1582221058 个字节（约 1.48GB）。&lt;/p&gt;
+&lt;p&gt;在迁移到京东对象存储的过程中，发现其进度一直停留在20%，重试多次依然如此，如下图：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/content/01.jpg&#34; alt=&#34;ipfs/content/01.jpg&#34;&gt;&lt;/p&gt;
+&lt;p&gt;这到底是怎么回事呢？我决定弄个明白。&lt;/p&gt;
+&lt;h2 id=&#34;定位问题&#34;&gt;定位问题&lt;/h2&gt;
+&lt;h4 id=&#34;step1-确定已迁移字节数&#34;&gt;Step1: 确定已迁移字节数&lt;/h4&gt;
+&lt;p&gt;因为数据库记录了已迁移的字节数，根据任务 ID 很容易拿到结果是 &lt;code&gt;322699264&lt;/code&gt; 字节。&lt;/p&gt;
+&lt;h4 id=&#34;step2-确定拉取失败的-cid&#34;&gt;Step2: 确定拉取失败的 CID&lt;/h4&gt;
+&lt;p&gt;众所周知 IPFS 对象是一棵树状结构，它具有以下特点：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;每个节点下面最多包含174个节点。&lt;/li&gt;
+&lt;li&gt;文件的数据都存在叶子节点上，每个叶子节点默认存储 256KB 字节。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;所以&lt;strong&gt;勇往直前&lt;/strong&gt;这个电影 IPFS 的组成是一棵三层的树，结构如下图：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/content/03.png&#34; alt=&#34;03.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;其中根节点的 CID 是 &lt;code&gt;QmZRJe...CJS&lt;/code&gt;；第二层除最后一个节点都存储了43.5MB内容、包含174个存储256KB内容的叶子节点。&lt;/p&gt;
+&lt;p&gt;因为 IPFS 内容的读取是顺序的，所以根据已经迁移的字节数很容易计算出失败的块在第二层和第三层的索引位置：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;第二层节点位置： (322699264 / 45613056) + 1 = 8
+第三层节点位置：(322699264 % 45613056) / 262144 + 1 = 14
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;备注： 数组下标 = 位置-1&lt;/p&gt;
+&lt;p&gt;下面我们通过 IPFS 的命令找到对应的 CID。&lt;/p&gt;
+&lt;p&gt;a. 首先根据文件 Root CID 查询第二层的所有节点（Links）：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;ipfs object get QmZRJevYhADpXmCGGF6eCcP1afNEYFahDW5jxje3iyyCJS
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;命令输出内容如下：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/content/02.png&#34; alt=&#34;ipfs/content/02.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;所得结果中 Links[7] 的 CID 是 &lt;code&gt;QmcfWDphyxf92EUv8DrHxvPDRzejeWg192cADyjyfiq33b&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;b. 继续查询第三层的所有节点（Links）:&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;ipfs object get QmcfWDphyxf92EUv8DrHxvPDRzejeWg192cADyjyfiq33b
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;命令输出内容如下：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/content/04.png&#34; alt=&#34;ipfs/content/04.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;所得结果中 Links[13] 的 CID 是 &lt;code&gt;QmNMjt6k7qXLtiDBHzsbBzmUJ6WJ6Aqx6VP3Uwje6Crnta&lt;/code&gt;，这个就是无法拉取到内容的起始 Block CID。 使用 &lt;code&gt;ipfs dht findprovs&lt;/code&gt; 命令确认全网确实没有能够提供内容的节点。&lt;/p&gt;
+&lt;p&gt;它前一个块和后一个块的 CID 分别是 &lt;code&gt;QmfMcounLQZCXaaUESkCWxZXLnoSyXfurpqxayMJALdK9w&lt;/code&gt; 和 &lt;code&gt;QmW48B3yM7KdB3HxDGWFy3XNY1Fi9rEETZLSrPtkMStEDw&lt;/code&gt;，前一个块能够查询到内容提供者：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;ipfs dht findprovs QmfMcounLQZCXaaUESkCWxZXLnoSyXfurpqxayMJALdK9w
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;命令输出内容如下：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/content/05.png&#34; alt=&#34;05.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;后一个块也无法查询到内容提供者。为什么会出现这样的结果呢？我的猜测是这样：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;该内容是分享在 IPFS 网络中的大文件（电影），大家在尝试播放观看该文件的时候，并没有将电影看完（缓存完全），最大缓存的位置就是拉取失败的块的前一个块的位置。&lt;/li&gt;
+&lt;li&gt;首次提供该内容的节点已下线或者内容清理，GC将原始内容清除，所以全网中就再也找不到该文件的全部内容了。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;内容永生的理解&#34;&gt;内容“永生”的理解&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;IPFS 网络中的内容通常并不会永久能访问到。&lt;/li&gt;
+&lt;li&gt;使用 &lt;code&gt;ipfs dht findprovs&lt;/code&gt; 命令查询到某个 CID 存在的节点，并不一定能够提供该文件的完整内容，它很有可能只是记录了该文件的元信息，真实的数据块（叶子节点）有损坏。&lt;/li&gt;
+&lt;li&gt;如果想要使自己的内容在 IPFS 网络中“永生”，一定永远至少存在一个能够提供该文件完整内容的节点，就是我们的产品，&lt;a href=&#34;https://docs.jdcloud.com/cn/object-storage-service/edgestorage&#34;&gt;京东云边缘存储&lt;/a&gt;存在的价值，有能力帮助你在 IPFS 网络中永久 Pin 住某个特定的文件。&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
     
     <item>
       <title>IPFS cat 命令详解</title>
