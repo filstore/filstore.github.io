@@ -1,6 +1,6 @@
 ---
 title: "IPFS 生态概览"
-date: 2018-10-22 15:27:35+0800
+date: 2018-08-22 15:27:35+0800
 summary: 要想全面了解 IPFS 就不得不提 Protocal labs，本文将介绍 Protocal 的使命以及正在从事的研发工作。
 tags: [ipfs, filecoin]
 ---
@@ -19,7 +19,7 @@ tags: [ipfs, filecoin]
 
 > IPFS is a new protocol to decentralize the web. IPFS enables the creation of completely decentralized and distributed applications, using content addressing and digital signatures。
 
-IPFS是一种去中心化网络的新协议。 IPFS支持使用内容寻址和数字签名创建完全去中心化的分布式应用程序。
+> IPFS是一种去中心化网络的新协议。 IPFS支持使用内容寻址和数字签名创建完全去中心化的分布式应用程序。
 
 可以看到， IPFS 主要作为一种网络协议，使得通过它构建完全去中心的分布式应用程序（DApp）成为可能（当然还有其他的方式，例如 ETH），但是就像传统中心化的应用，DApp 对于永久可靠性存储的需求一直都在，并且成为 DApp 能够爆发的关键一环，当然也直接决定了 IPFS 协议最终的成功。
 
@@ -29,25 +29,33 @@ IPFS是一种去中心化网络的新协议。 IPFS支持使用内容寻址和�
 
 ## Filecoin
 
-Filecoin is a cryptocurrency powered storage network. Miners earn Filecoin by providing open hard-drive space to the network, while users spend Filecoin to store their files encrypted in the decentralized network.(Filecoin 是一种加密货币驱动的存储网络。 矿工通过向网络提供开放的硬盘空间来获得Filecoin，而用户使用Filecoin来存储他们在分散网络中加密的文件。)
+> Filecoin is a cryptocurrency powered storage network. Miners earn Filecoin by providing open hard-drive space to the network, while users spend Filecoin to store their files encrypted in the decentralized network.
+
+> Filecoin 是一种加密货币驱动的存储网络。 矿工通过向网络提供开放的硬盘空间来获得Filecoin，而用户使用Filecoin来存储他们在分散网络中加密的文件。
 
 DApp 是需要大量永久性去中心化存储的，这一点 IPFS 无法满足，所以 Filecoin 孕育而生，而且通过 FileCoin + IPFS 可以很好的解决整个 DApp 的内容存储和分发问题。
 
 ## libp2p
 
-libp2p is a modular networking stack. libp2p brings together a variety of transports and peer-to-peer protocols, making it easy for developers to build large, robust p2p networks. (libp2p 是一个模块化的网络技术栈。 libp2p汇集了各种传输和点对点协议，使开发人员可以轻松构建大型，强大的 p2p 网络)。
+> libp2p is a modular networking stack. libp2p brings together a variety of transports and peer-to-peer protocols, making it easy for developers to build large, robust p2p networks. 
+
+> libp2p 是一个模块化的网络技术栈。 libp2p汇集了各种传输和点对点协议，使开发人员可以轻松构建大型，强大的 p2p 网络。
 
 目前去中心化的网络都是基于 p2p 来构建的，例如 BTC, ETH 和 IPFS, 因为 IPFS 包含了一个强大的 p2p 网络，那么将它抽离出来,成为一个单独的项目，能够被其它开源项目所复用是非常有价值的。
 
 ## IPLD
 
-IPLD is the data model for the Decentralized Web. It connects all data through cryptographic hashes, and makes it easy to traverse and link to.(IPLD是去中心化 Web 的数据模型。 它通过加密哈希连接所有数据，并使其易于遍历和链接)。
+> IPLD is the data model for the Decentralized Web. It connects all data through cryptographic hashes, and makes it easy to traverse and link to.
+
+> IPLD是去中心化 Web 的数据模型。 它通过加密哈希连接所有数据，并使其易于遍历和链接。
 
 IPFS 属于去中心化的 Web 协议，那么底层就依赖 IPLD，这样的数据结构能够在各种去中心的网络中实现数据共享和互访，例如（IPFS 和 ETH，BTC 等）。
 
 ## Multiformats
 
-The Multiformats Project is a collection of protocols to future-proof systems, today. Self-describing formats make your systems interoperable and upgradable.（Multiformats 项目是当今面向未来系统的协议集合。 自描述的格式使你的系统可互操作和可升级）。
+> The Multiformats Project is a collection of protocols to future-proof systems, today. Self-describing formats make your systems interoperable and upgradable.
+
+> Multiformats 项目是当今面向未来系统的协议集合。 自描述的格式使你的系统可互操作和可升级。
 
 Multiformats 主要强调其自描述性，故名思议可以通过格式就能知道其中含义，那么作为一组协议集合，它目前包含了：
 
