@@ -6,10 +6,256 @@
     <description>FILVIP (ipfs)</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 18 Jan 2019 18:18:50 +0800</lastBuildDate>
+    <lastBuildDate>Thu, 28 Feb 2019 17:29:43 +0800</lastBuildDate>
     
     <atom:link href="/tags/ipfs/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>IPFS PubSub 从入门到精通</title>
+      <link>/posts/ipfs-pubsub-cong-ru-men-dao-jing-tong/</link>
+      <pubDate>Thu, 28 Feb 2019 17:29:43 +0800</pubDate>
+      
+      <guid>/posts/ipfs-pubsub-cong-ru-men-dao-jing-tong/</guid>
+      <description>&lt;p&gt;IPFS 有个叫 PubSub 的功能模块，能够实现 IPFS 网络中任意消息的订阅和发布，我们先来看个简单的例子。&lt;/p&gt;
+&lt;h3 id=&#34;pubsub-示例&#34;&gt;PubSub 示例&lt;/h3&gt;
+&lt;p&gt;Step 1: 开启 pubsub 功能&lt;/p&gt;
+&lt;p&gt;因为 pubsub 属于实验功能，所以我们需要以 &lt;code&gt;--enable-pubsub-experiment&lt;/code&gt; 参数来运行，我们在本地启动三个IPFS节点，并相互连接：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ cd ~/ipfstest/node1
+$ ipfs daemon --enable-pubsub-experiment
+Initializing daemon...
+
+$ cd ~/ipfstest/node2
+$ ipfs daemon --enable-pubsub-experiment
+Initializing daemon...
+
+$ cd ~/ipfstest/node3
+$ ipfs daemon --enable-pubsub-experiment
+Initializing daemon...
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;三个节点的 ID 分别为：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;node1: QmaEhAQ3DHC9NyEFTQfd9q4V3FVp9hUt5NCbnFq6bWX4Dk&lt;/li&gt;
+&lt;li&gt;node2: QmRYgkFHhMLhDXKd33n178MNuPHSr8DbBE4UPDHjyoz3BZ&lt;/li&gt;
+&lt;li&gt;node3: QmXsSe9HsTGrmotAwZ3YHPotPgFFpRHwjwfGLpzCcxsEPx&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;此时通过任意一个节点可以看到另外两个节点，例如 node1：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs swarm peers
+
+/ip4/10.12.220.142/tcp/4002/ipfs/QmXsSe9HsTGrmotAwZ3YHPotPgFFpRHwjwfGLpzCcxsEPx
+/ip4/10.12.220.142/tcp/4011/ipfs/QmRYgkFHhMLhDXKd33n178MNuPHSr8DbBE4UPDHjyoz3BZ
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;Step 2: 订阅主题：&lt;/p&gt;
+&lt;p&gt;分别让 node1 和 node2 订阅主题 &lt;code&gt;my-topic&lt;/code&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ cd ~/ipfstest/node1
+ipfs pubsub sub my-topic
+
+$ cd ~/ipfstest/node2
+ipfs pubsub sub my-topic
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;此时，node1 和 node2 的终端会卡住，等到接受新消息:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/pubsub/01.png&#34; alt=&#34;pubsub-01&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Step 3: 发送和接收消息：&lt;/p&gt;
+&lt;p&gt;使用 node3 向主题 &lt;code&gt;my-topic&lt;/code&gt; 发送消息：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ cd ~/ipfstest/node3
+$ ipfs pubsub pub my-topic &#39;hello world&#39;
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;此时，node1 和 node2  将收到 &lt;code&gt;hello world&lt;/code&gt; 消息:
+&lt;img src=&#34;/images/pubsub/02.png&#34; alt=&#34;pubsub-02&#34;&gt;&lt;/p&gt;
+&lt;h3 id=&#34;pubsub-命令详解&#34;&gt;PubSub 命令详解&lt;/h3&gt;
+&lt;p&gt;我们可以使用 &lt;code&gt;ipfs pubsub --help&lt;/code&gt; 来查看 PubSub 的所有命令和参数。&lt;/p&gt;
+&lt;h3 id=&#34;ls-命令&#34;&gt;ls 命令&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;ls&lt;/code&gt; 命令可以列出本节点订阅的所有主题。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ cd ~/ipfstest/node1
+$ ipfs pubsub ls
+my-topic
+
+$ cd ~/ipfstest/node2
+$ ipfs pubsub ls
+my-topic
+&lt;/code&gt;&lt;/pre&gt;&lt;h3 id=&#34;peers-命令&#34;&gt;peers 命令&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;peers&lt;/code&gt; 命令可以列出与本节点 PubSub 相连的节点，默认列出所有节点，可以通过参数过滤定阅特定主题节点。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ cd ~/ipfstest/node1
+$ ipfs pubsub peers
+QmRYgkFHhMLhDXKd33n178MNuPHSr8DbBE4UPDHjyoz3BZ
+QmXsSe9HsTGrmotAwZ3YHPotPgFFpRHwjwfGLpzCcxsEPx
+
+$ ipfs pubsub peers my-topic
+QmRYgkFHhMLhDXKd33n178MNuPHSr8DbBE4UPDHjyoz3BZ
+
+$ ipfs pubsub peers temp
+(空)
+&lt;/code&gt;&lt;/pre&gt;&lt;h3 id=&#34;sub-命令&#34;&gt;sub 命令&lt;/h3&gt;
+&lt;p&gt;可以通过 &lt;code&gt;sub&lt;/code&gt; 命令订阅一个主题，该命令支持 &lt;code&gt;--discover&lt;/code&gt; 参数，表示允许通过 IPFS 网络搜素该主题的订阅节点，并与其建立连接。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs pubsub sub my-topic
+$ ipfs pubsub sub my-topic --discover
+&lt;/code&gt;&lt;/pre&gt;&lt;h3 id=&#34;pub-命令&#34;&gt;pub 命令&lt;/h3&gt;
+&lt;p&gt;可以通过 &lt;code&gt;pub&lt;/code&gt; 向一个主题发布消息，该节点可以将消息通知到所有连接并订阅该主题的节点。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs pubsub pub my-topic &#39;some message&#39;
+&lt;/code&gt;&lt;/pre&gt;&lt;h3 id=&#34;pubsub-实现原理&#34;&gt;PubSub 实现原理&lt;/h3&gt;
+&lt;p&gt;这里我们主要了解 PubSub 的 sub 和 pub 命令的原理。首先我们来看看 PubSub 结构体的定义：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-golang&#34; data-lang=&#34;golang&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// PubSub is the implementation of the pubsub system.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;PubSub&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
+    &lt;span style=&#34;color:#75715e&#34;&gt;// atomic counter for seqnos
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// NOTE: Must be declared at the top of the struct as we perform atomic
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// operations on this field.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;//
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// See: https://golang.org/pkg/sync/atomic/#pkg-note-BUG
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// The set of topics we are subscribed to
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;myTopics&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;map&lt;/span&gt;[&lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;]&lt;span style=&#34;color:#66d9ef&#34;&gt;map&lt;/span&gt;[&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;Subscription&lt;/span&gt;]&lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt;{}
+    &lt;span style=&#34;color:#75715e&#34;&gt;// topics tracks which topics each of our peers are subscribed to
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;topics&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;map&lt;/span&gt;[&lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;]&lt;span style=&#34;color:#66d9ef&#34;&gt;map&lt;/span&gt;[&lt;span style=&#34;color:#a6e22e&#34;&gt;peer&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;ID&lt;/span&gt;]&lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt;{}
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;peers&lt;/span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;map&lt;/span&gt;[&lt;span style=&#34;color:#a6e22e&#34;&gt;peer&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;ID&lt;/span&gt;]&lt;span style=&#34;color:#66d9ef&#34;&gt;chan&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;RPC&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;它主要涉及三个关键字段，其它字段我已忽略，含义是：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;myTopics: 表示该节点订阅详情。&lt;/li&gt;
+&lt;li&gt;topics: 收到的主题节点订阅情况。&lt;/li&gt;
+&lt;li&gt;peers: 所有相连的节点。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;下面我们来看看几个核心流程，是怎样通过该三个字段实现消息订阅和发布的：&lt;/p&gt;
+&lt;p&gt;状态 1: 所有三个节点两两相连&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/pubsub/node-01.png&#34; alt=&#34;node-01.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;此时三个节点的 myTopics 和 topics 都为空，peers 是其它相连的两个节点。&lt;/p&gt;
+&lt;p&gt;状态 2: Node1 节点执行 &lt;code&gt;ipfs pubsub sub my-topic&lt;/code&gt;：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/pubsub/node-02.png&#34; alt=&#34;node-02.png&#34;&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Node1 的 myTopics 会添加 &lt;code&gt;my-topic&lt;/code&gt; 记录。&lt;/li&gt;
+&lt;li&gt;Node1 会向相连的节点广播自己新增的订阅信息，所以 Node2 和 Node3 节点的 topics 会新增 &lt;code&gt;my-topic&lt;/code&gt; 记录。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;状态 3: Node2 节点执行 &lt;code&gt;ipfs pubsub pub my-topic &#39;some message&#39;&lt;/code&gt;：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/pubsub/node-03.png&#34; alt=&#34;node-03.png&#34;&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Node2 节点从本地的 topics[&amp;ldquo;my-topic&amp;rdquo;] 中查到到订阅的节点列表为 Node1 节点。&lt;/li&gt;
+&lt;li&gt;发送消息 &amp;lsquo;some message&amp;rsquo; 给 Node1 节点。&lt;/li&gt;
+&lt;li&gt;Node1 收到通知消息会匹配本地的 myTopics[&amp;ldquo;my-topic&amp;rdquo;] 记录，输出到对应的 &lt;code&gt;*Subscription&lt;/code&gt;中。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;状态 4: 网络中存在隔离节点（没有直接相连，DHT Table 可以检索到）：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/pubsub/node-04.png&#34; alt=&#34;node-04.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;如果 Node4 也想发布内容到 &lt;code&gt;my-topic&lt;/code&gt;，并且能够让 Node1 收到消息，需要使用到 &lt;code&gt;--discover&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;状态 5: 使用 &lt;code&gt;--discover&lt;/code&gt; 参数，让 Node4 与 Node1 相连&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/pubsub/node-05.png&#34; alt=&#34;node-05.png&#34;&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;使用 &amp;ndash;discover 参数让 Node1 重新 sub &lt;code&gt;my-topic&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;Node1 会在本地 blocks 文件夹下创建一个内容为 &amp;lsquo;floodsub:my-topic&amp;rsquo; 的 Block 文件，然后 IPFS 会自动将内容 Hash 发布到距离最近(XOR)的节点。&lt;/li&gt;
+&lt;li&gt;Node4 也采用 &amp;ndash;discover 参数 sub &lt;code&gt;my-topic&lt;/code&gt;，此时它会根据 &amp;lsquo;floodsub:my-topic&amp;rsquo; 的内容 Hash，利用 &lt;code&gt;ipfs dht findprovs&lt;/code&gt; 命令找到 Hash 的对应提供者。&lt;/li&gt;
+&lt;li&gt;尝试与所有提供者进行连接，然后将它们的节点添加到本地的 topics[&amp;ldquo;my-topic&amp;rdquo;] 列表中。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;状态 6: Node4 节点执行 &lt;code&gt;ipfs pubsub pub my-topic &#39;some message again&#39;&lt;/code&gt;：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/pubsub/node-06.png&#34; alt=&#34;node-06.png&#34;&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Node4 节点从本地的 topics[&amp;ldquo;my-topic&amp;rdquo;] 中查到到订阅的节点列表为 Node1 节点。&lt;/li&gt;
+&lt;li&gt;发送消息 &amp;lsquo;some message again&amp;rsquo; 给 Node1 节点。&lt;/li&gt;
+&lt;li&gt;Node1 收到通知消息会匹配本地的 myTopics[&amp;ldquo;my-topic&amp;rdquo;] 记录，输出到对应的 &lt;code&gt;*Subscription&lt;/code&gt;中。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;总结&#34;&gt;总结&lt;/h2&gt;
+&lt;p&gt;好了，到目前为止，我们学习到了 IPFS PubSub 的基本用法，参数详解以及具体实现逻辑。&lt;/p&gt;
+&lt;p&gt;如果想要在复杂网络中（一开始并不直接相连的节点）使用 PubSub 功能，需要通过 &lt;code&gt;--discover&lt;/code&gt; 参数，将节点之间按照 topic 形成互联，从而实现任意地方消息订阅和发布。&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>IPNS 从入门到精通</title>
+      <link>/posts/ipnscong-ru-men-dao-jing-tong/</link>
+      <pubDate>Wed, 20 Feb 2019 17:17:12 +0800</pubDate>
+      
+      <guid>/posts/ipnscong-ru-men-dao-jing-tong/</guid>
+      <description>&lt;p&gt;IPNS 是构建在 IPFS 之上的一套依赖 PKI的命名空间系统(namespace sytem， KV 存储空间)，其中 Key 是公钥，值是经过私钥签名的新值，所以网络中的其它节点可以根据公钥就能进行内容验证（防伪造）。&lt;/p&gt;
+&lt;h3 id=&#34;为什么需要-ipns&#34;&gt;为什么需要 IPNS&lt;/h3&gt;
+&lt;p&gt;众所周知，我们可以通过 &lt;code&gt;/ipfs/QmS4ust...&lt;/code&gt; 方式来访问一个对象，但由于 IPFS Hash 与内容一一对应（如果内容发生改变，Hash 值也会随之改变），所以我们访问新内容的时候需要知道新的 Hash， 这显然不够友好，那么我们是否可以通过一个固定的 Hash 来访问不同版本的内容呢？&lt;/p&gt;
+&lt;p&gt;要实现上述功能，我们可以使用 IPNS，下面我们就来看看实际的例子。&lt;/p&gt;
+&lt;h3 id=&#34;ipns-示例&#34;&gt;IPNS 示例&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;添加内容&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ echo &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;hello, this IPNS example&amp;#34;&lt;/span&gt; &amp;gt; ipns.txt
+
+$ ipfs add ipns.txt
+added QmeVuuv7disk9Ri6n3QtTUCEW462UPZe3iWYFVNWNQwYxr ipns.txt
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;发布到 IPNS 中&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ ipfs name publish /ipfs/QmeVuuv7disk9Ri6n3QtTUCEW462UPZe3iWYFVNWNQwYxr
+Published to QmbhgXW9LBpTcpEUerXTuoNZNd4AeHuEkb6iKx67KwSd9p: /ipfs/QmeVuuv7disk9Ri6n3QtTUCEW462UPZe3iWYFVNWNQwYxr
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;通过 IPNS 查询访问内容&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ ipfs cat /ipns/QmbhgXW9LBpTcpEUerXTuoNZNd4AeHuEkb6iKx67KwSd9p
+hello, this IPNS example
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;修改内容，重复上述步骤&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 在 ipns.text 文件追加内容&lt;/span&gt;
+$ echo &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;hello, this IPNS example&amp;#34;&lt;/span&gt; &amp;gt;&amp;gt; ipns.txt
+
+&lt;span style=&#34;color:#75715e&#34;&gt;# 将新文件添加到 IPFS 网络&lt;/span&gt;
+$ ipfs add ipns.txt
+added Qmak4GvXptsAwXLFnnSfLLhpv4PLNHPRgruueKeVTUFnXP ipns.txt
+
+&lt;span style=&#34;color:#75715e&#34;&gt;# 向网络发布最新的值&lt;/span&gt;
+$ ipfs name publish Qmak4GvXptsAwXLFnnSfLLhpv4PLNHPRgruueKeVTUFnXP
+Published to QmbhgXW9LBpTcpEUerXTuoNZNd4AeHuEkb6iKx67KwSd9p: /ipfs/Qmak4GvXptsAwXLFnnSfLLhpv4PLNHPRgruueKeVTUFnXP
+
+&lt;span style=&#34;color:#75715e&#34;&gt;#通过固定的 IPNS Key 查询最新的值&lt;/span&gt;
+$ ipfs cat /ipns/QmbhgXW9LBpTcpEUerXTuoNZNd4AeHuEkb6iKx67KwSd9p
+hello, this IPNS example
+hello, this IPNS example
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;在上面的例子中，我们使用相同的 Key 先后映射 ipns.txt 文件的两个不同版本，而且使用 /ipns/KEY 的方式来获取对应内容。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;它就像一个指针，固定的 Key 指向了一个具体的内容。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id=&#34;ipns-高级指南&#34;&gt;IPNS 高级指南&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;本地 KPI 列表&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ ipfs key list 
+self
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;默认使用 节点的 ID 作为 Key，并且标记为 self。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;新增KPI密钥对&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs key gen ipns-example --type=rsa --size=2048
+QmVsHo1xo32utEr8rsj3sjfx78WikZZ6sWGGNJTRFZu3jV
+
+# 再次查看可以查看到新建的 `ipns-example` 
+$ ipfs key list 
+self
+ipns-example
+&lt;/code&gt;&lt;/pre&gt;&lt;ul&gt;
+&lt;li&gt;选择特定的 Key 来发布内容&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs name publish --key=ipns-example Qmak4GvXptsAwXLFnnSfLLhpv4PLNHPRgruueKeVTUFnXP
+Published to QmVsHo1xo32utEr8rsj3sjfx78WikZZ6sWGGNJTRFZu3jV: /ipfs/Qmak4GvXptsAwXLFnnSfLLhpv4PLNHPRgruueKeVTUFnXP
+
+# 使用新 Key 查询内容
+$ ipfs cat /ipns/QmVsHo1xo32utEr8rsj3sjfx78WikZZ6sWGGNJTRFZu3jV
+hello, this IPNS example
+hello, this IPNS example
+&lt;/code&gt;&lt;/pre&gt;&lt;ul&gt;
+&lt;li&gt;查询某个 Key 的映射内容（版本）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre&gt;&lt;code&gt;$ ipfs name resolve QmbhgXW9LBpTcpEUerXTuoNZNd4AeHuEkb6iKx67KwSd9p
+/ipfs/Qmak4GvXptsAwXLFnnSfLLhpv4PLNHPRgruueKeVTUFnXP
+&lt;/code&gt;&lt;/pre&gt;&lt;blockquote&gt;
+&lt;p&gt;我们可以通过创建多个 Key，每个 Key 映射一个目录，从而实现分组需求，可以用这个功能来实现单个节点托管多个静态网站。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id=&#34;ipns-实现原理&#34;&gt;IPNS 实现原理&lt;/h3&gt;
+&lt;p&gt;IPNS 本质是一个KV存储，当我们知道 Key 的时候，能够在 IPFS 网络中快速查询到对应的 Value，要实现这一步， IPFS 网络中就要存储这个 KV 映射信息，那 IPFS 是如何来实现的呢？&lt;/p&gt;
+&lt;p&gt;实现原理大致如图：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/ipfs/ipns.jpg&#34; alt=&#34;ipns.jpg&#34;&gt;&lt;/p&gt;
+&lt;p&gt;具体如下：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;通过 &lt;code&gt;ipfs name publish&lt;/code&gt; 发布内容时候，IPFS 节点会先将 KV 数据存储到本地的 LevelDB 中，其中 Key 的格式类似 &lt;code&gt;ipns/Qmxxx&lt;/code&gt;，默认存储时间为 24h，不过可以通过 -t 参数来设置。&lt;/li&gt;
+&lt;li&gt;在本地 DHT Table 中寻找特定数量的相邻节点，寻找的过程为首先通过 Key 与 Peer 节点 ID 进行 XOR 计算，找到对应桶中的节点。&lt;/li&gt;
+&lt;li&gt;相邻节点收到发布的内容后，会做签名验证验证，然后存储到本地的 LevelDB 中，这步与 1 相同。&lt;/li&gt;
+&lt;li&gt;当其它节点拿到 IPNS 的 Key 的时候，可以获取与 Key 相邻的节点，与第2步的相邻节点相似，然后向它们请求该 Key 的内容。&lt;/li&gt;
+&lt;li&gt;相邻节点单收到 Key 查询请求的时候，会检查本地 LevelDB 是否包含该 Key，如果包含，返回其内容，否则返回空。&lt;/li&gt;
+&lt;li&gt;根据解析到的 Key 对应的具体内容ID来进行内容交换。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h3 id=&#34;qa&#34;&gt;Q&amp;amp;A&lt;/h3&gt;
+&lt;p&gt;a. 默认发布的 Key 过期问题？&lt;/p&gt;
+&lt;p&gt;可以通过定期 public 或者通过 -t 参数设置较长时间周期。&lt;/p&gt;
+&lt;p&gt;b. 如何保证存储的可靠性？&lt;/p&gt;
+&lt;p&gt;节点会向多节邻居发布映射关系，从而在部分节点下线的时候，也能在网络中查询到结果。&lt;/p&gt;
+&lt;p&gt;c. 数据一致性问题？&lt;/p&gt;
+&lt;p&gt;当邻居节点已经存储当前最新发布信息，此时下线，那么新的发布信息将丢失，从而导致本地存储的信息过期，当该节点重新上线后，当有节点来向它查询的时候，将会返回旧的结果。&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>IPFS 内容永生的理解？</title>

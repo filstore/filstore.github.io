@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<title>IPFS PubSub 从入门到精通 - FILVIP</title>
+<meta name="description" content="">
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="/favicon.png">
+
+<link rel="stylesheet" href="/css/style.css?rnd=1591947566" />
+
+<link rel="stylesheet" href="/css/my.css?rnd=1591947566">
+
+<meta property="og:title" content="IPFS PubSub 从入门到精通" />
+<meta property="og:description" content="本篇主要介绍 IPFS PubSub 的基本用法，原理，以及使用注意事项。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/posts/ipfs-pubsub-cong-ru-men-dao-jing-tong/" />
+<meta property="og:image" content="/images/og-featured.png"/>
+<meta property="article:published_time" content="2019-02-28T17:29:43+08:00" />
+<meta property="article:modified_time" content="2019-02-28T17:29:43+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="/images/og-featured.png"/>
+
+<meta name="twitter:title" content="IPFS PubSub 从入门到精通"/>
+<meta name="twitter:description" content="本篇主要介绍 IPFS PubSub 的基本用法，原理，以及使用注意事项。"/>
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header> 
+            
+                <h1 class="site-header">
+    <a href="/">FILVIP</a>
+</h1>
+<nav>
+    
+    
+    <a class="" href="/tags/ipfs" title="IPFS">IPFS</a>
+    
+    <a class="" href="/tags/filecoin" title="FileCoin">FileCoin</a>
+    
+    <a class="" href="/posts/" title="Archive">Archive</a>
+    
+    <a class="" href="/about" title="About">About</a>
+    
+</nav>
+
+            
+        </header>
+        <main id="main" tabindex="-1"> 
+            
+
+    <article class="post">
+        <header>
+            <h1 class="post-title">IPFS PubSub 从入门到精通</h1>
+        </header>
+        <div class="content">
+            <p>IPFS 有个叫 PubSub 的功能模块，能够实现 IPFS 网络中任意消息的订阅和发布，我们先来看个简单的例子。</p>
+<h3 id="pubsub-示例">PubSub 示例</h3>
+<p>Step 1: 开启 pubsub 功能</p>
+<p>因为 pubsub 属于实验功能，所以我们需要以 <code>--enable-pubsub-experiment</code> 参数来运行，我们在本地启动三个IPFS节点，并相互连接：</p>
+<pre><code>$ cd ~/ipfstest/node1
+$ ipfs daemon --enable-pubsub-experiment
+Initializing daemon...
+
+$ cd ~/ipfstest/node2
+$ ipfs daemon --enable-pubsub-experiment
+Initializing daemon...
+
+$ cd ~/ipfstest/node3
+$ ipfs daemon --enable-pubsub-experiment
+Initializing daemon...
+</code></pre><p>三个节点的 ID 分别为：</p>
+<ul>
+<li>node1: QmaEhAQ3DHC9NyEFTQfd9q4V3FVp9hUt5NCbnFq6bWX4Dk</li>
+<li>node2: QmRYgkFHhMLhDXKd33n178MNuPHSr8DbBE4UPDHjyoz3BZ</li>
+<li>node3: QmXsSe9HsTGrmotAwZ3YHPotPgFFpRHwjwfGLpzCcxsEPx</li>
+</ul>
+<p>此时通过任意一个节点可以看到另外两个节点，例如 node1：</p>
+<pre><code>$ ipfs swarm peers
+
+/ip4/10.12.220.142/tcp/4002/ipfs/QmXsSe9HsTGrmotAwZ3YHPotPgFFpRHwjwfGLpzCcxsEPx
+/ip4/10.12.220.142/tcp/4011/ipfs/QmRYgkFHhMLhDXKd33n178MNuPHSr8DbBE4UPDHjyoz3BZ
+</code></pre><p>Step 2: 订阅主题：</p>
+<p>分别让 node1 和 node2 订阅主题 <code>my-topic</code></p>
+<pre><code>$ cd ~/ipfstest/node1
+ipfs pubsub sub my-topic
+
+$ cd ~/ipfstest/node2
+ipfs pubsub sub my-topic
+</code></pre><p>此时，node1 和 node2 的终端会卡住，等到接受新消息:</p>
+<p><img src="/images/pubsub/01.png" alt="pubsub-01"></p>
+<p>Step 3: 发送和接收消息：</p>
+<p>使用 node3 向主题 <code>my-topic</code> 发送消息：</p>
+<pre><code>$ cd ~/ipfstest/node3
+$ ipfs pubsub pub my-topic 'hello world'
+</code></pre><p>此时，node1 和 node2  将收到 <code>hello world</code> 消息:
+<img src="/images/pubsub/02.png" alt="pubsub-02"></p>
+<h3 id="pubsub-命令详解">PubSub 命令详解</h3>
+<p>我们可以使用 <code>ipfs pubsub --help</code> 来查看 PubSub 的所有命令和参数。</p>
+<h3 id="ls-命令">ls 命令</h3>
+<p><code>ls</code> 命令可以列出本节点订阅的所有主题。</p>
+<pre><code>$ cd ~/ipfstest/node1
+$ ipfs pubsub ls
+my-topic
+
+$ cd ~/ipfstest/node2
+$ ipfs pubsub ls
+my-topic
+</code></pre><h3 id="peers-命令">peers 命令</h3>
+<p><code>peers</code> 命令可以列出与本节点 PubSub 相连的节点，默认列出所有节点，可以通过参数过滤定阅特定主题节点。</p>
+<pre><code>$ cd ~/ipfstest/node1
+$ ipfs pubsub peers
+QmRYgkFHhMLhDXKd33n178MNuPHSr8DbBE4UPDHjyoz3BZ
+QmXsSe9HsTGrmotAwZ3YHPotPgFFpRHwjwfGLpzCcxsEPx
+
+$ ipfs pubsub peers my-topic
+QmRYgkFHhMLhDXKd33n178MNuPHSr8DbBE4UPDHjyoz3BZ
+
+$ ipfs pubsub peers temp
+(空)
+</code></pre><h3 id="sub-命令">sub 命令</h3>
+<p>可以通过 <code>sub</code> 命令订阅一个主题，该命令支持 <code>--discover</code> 参数，表示允许通过 IPFS 网络搜素该主题的订阅节点，并与其建立连接。</p>
+<pre><code>$ ipfs pubsub sub my-topic
+$ ipfs pubsub sub my-topic --discover
+</code></pre><h3 id="pub-命令">pub 命令</h3>
+<p>可以通过 <code>pub</code> 向一个主题发布消息，该节点可以将消息通知到所有连接并订阅该主题的节点。</p>
+<pre><code>$ ipfs pubsub pub my-topic 'some message'
+</code></pre><h3 id="pubsub-实现原理">PubSub 实现原理</h3>
+<p>这里我们主要了解 PubSub 的 sub 和 pub 命令的原理。首先我们来看看 PubSub 结构体的定义：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-golang" data-lang="golang"><span style="color:#75715e">// PubSub is the implementation of the pubsub system.
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">PubSub</span> <span style="color:#66d9ef">struct</span> {
+    <span style="color:#75715e">// atomic counter for seqnos
+</span><span style="color:#75715e"></span>    <span style="color:#75715e">// NOTE: Must be declared at the top of the struct as we perform atomic
+</span><span style="color:#75715e"></span>    <span style="color:#75715e">// operations on this field.
+</span><span style="color:#75715e"></span>    <span style="color:#75715e">//
+</span><span style="color:#75715e"></span>    <span style="color:#75715e">// See: https://golang.org/pkg/sync/atomic/#pkg-note-BUG
+</span><span style="color:#75715e"></span>    <span style="color:#75715e">// The set of topics we are subscribed to
+</span><span style="color:#75715e"></span>    <span style="color:#a6e22e">myTopics</span> <span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">string</span>]<span style="color:#66d9ef">map</span>[<span style="color:#f92672">*</span><span style="color:#a6e22e">Subscription</span>]<span style="color:#66d9ef">struct</span>{}
+    <span style="color:#75715e">// topics tracks which topics each of our peers are subscribed to
+</span><span style="color:#75715e"></span>    <span style="color:#a6e22e">topics</span> <span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">string</span>]<span style="color:#66d9ef">map</span>[<span style="color:#a6e22e">peer</span>.<span style="color:#a6e22e">ID</span>]<span style="color:#66d9ef">struct</span>{}
+    <span style="color:#a6e22e">peers</span>  <span style="color:#66d9ef">map</span>[<span style="color:#a6e22e">peer</span>.<span style="color:#a6e22e">ID</span>]<span style="color:#66d9ef">chan</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">RPC</span>
+</code></pre></div><p>它主要涉及三个关键字段，其它字段我已忽略，含义是：</p>
+<ul>
+<li>myTopics: 表示该节点订阅详情。</li>
+<li>topics: 收到的主题节点订阅情况。</li>
+<li>peers: 所有相连的节点。</li>
+</ul>
+<p>下面我们来看看几个核心流程，是怎样通过该三个字段实现消息订阅和发布的：</p>
+<p>状态 1: 所有三个节点两两相连</p>
+<p><img src="/images/pubsub/node-01.png" alt="node-01.png"></p>
+<p>此时三个节点的 myTopics 和 topics 都为空，peers 是其它相连的两个节点。</p>
+<p>状态 2: Node1 节点执行 <code>ipfs pubsub sub my-topic</code>：</p>
+<p><img src="/images/pubsub/node-02.png" alt="node-02.png"></p>
+<ul>
+<li>Node1 的 myTopics 会添加 <code>my-topic</code> 记录。</li>
+<li>Node1 会向相连的节点广播自己新增的订阅信息，所以 Node2 和 Node3 节点的 topics 会新增 <code>my-topic</code> 记录。</li>
+</ul>
+<p>状态 3: Node2 节点执行 <code>ipfs pubsub pub my-topic 'some message'</code>：</p>
+<p><img src="/images/pubsub/node-03.png" alt="node-03.png"></p>
+<ul>
+<li>Node2 节点从本地的 topics[&ldquo;my-topic&rdquo;] 中查到到订阅的节点列表为 Node1 节点。</li>
+<li>发送消息 &lsquo;some message&rsquo; 给 Node1 节点。</li>
+<li>Node1 收到通知消息会匹配本地的 myTopics[&ldquo;my-topic&rdquo;] 记录，输出到对应的 <code>*Subscription</code>中。</li>
+</ul>
+<p>状态 4: 网络中存在隔离节点（没有直接相连，DHT Table 可以检索到）：</p>
+<p><img src="/images/pubsub/node-04.png" alt="node-04.png"></p>
+<p>如果 Node4 也想发布内容到 <code>my-topic</code>，并且能够让 Node1 收到消息，需要使用到 <code>--discover</code>。</p>
+<p>状态 5: 使用 <code>--discover</code> 参数，让 Node4 与 Node1 相连</p>
+<p><img src="/images/pubsub/node-05.png" alt="node-05.png"></p>
+<ul>
+<li>使用 &ndash;discover 参数让 Node1 重新 sub <code>my-topic</code>。</li>
+<li>Node1 会在本地 blocks 文件夹下创建一个内容为 &lsquo;floodsub:my-topic&rsquo; 的 Block 文件，然后 IPFS 会自动将内容 Hash 发布到距离最近(XOR)的节点。</li>
+<li>Node4 也采用 &ndash;discover 参数 sub <code>my-topic</code>，此时它会根据 &lsquo;floodsub:my-topic&rsquo; 的内容 Hash，利用 <code>ipfs dht findprovs</code> 命令找到 Hash 的对应提供者。</li>
+<li>尝试与所有提供者进行连接，然后将它们的节点添加到本地的 topics[&ldquo;my-topic&rdquo;] 列表中。</li>
+</ul>
+<p>状态 6: Node4 节点执行 <code>ipfs pubsub pub my-topic 'some message again'</code>：</p>
+<p><img src="/images/pubsub/node-06.png" alt="node-06.png"></p>
+<ul>
+<li>Node4 节点从本地的 topics[&ldquo;my-topic&rdquo;] 中查到到订阅的节点列表为 Node1 节点。</li>
+<li>发送消息 &lsquo;some message again&rsquo; 给 Node1 节点。</li>
+<li>Node1 收到通知消息会匹配本地的 myTopics[&ldquo;my-topic&rdquo;] 记录，输出到对应的 <code>*Subscription</code>中。</li>
+</ul>
+<h2 id="总结">总结</h2>
+<p>好了，到目前为止，我们学习到了 IPFS PubSub 的基本用法，参数详解以及具体实现逻辑。</p>
+<p>如果想要在复杂网络中（一开始并不直接相连的节点）使用 PubSub 功能，需要通过 <code>--discover</code> 参数，将节点之间按照 topic 形成互联，从而实现任意地方消息订阅和发布。</p>
+
+        </div>
+        
+
+    
+
+
+<div class="post-info">
+    
+        <div class="post-date">2019-02-28</div>
+    
+    <div class="post-taxonomies">
+        
+            
+                <ul class="post-tags">
+                    
+                        <li><a href="/tags/ipfs">#ipfs</a></li>
+                    
+                </ul>
+        
+    </div>
+</div>
+
+    </article>
+
+    
+
+    
+
+
+        </main>
+        <footer>
+            
+                
+                
+
+                <p>© filstore.vip, 2020<br>
+Powered by <a target="_blank" href="https://gohugo.io/">Hugo</a>, theme <a target="_blank" href="https://github.com/mitrichius/hugo-theme-anubis">Anubis</a>.
+</p>
+            
+        </footer>
+    </div>
+</body>
+</html>
