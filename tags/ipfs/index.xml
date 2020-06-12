@@ -6,10 +6,278 @@
     <description>FILVIP (ipfs)</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 28 Feb 2019 17:29:43 +0800</lastBuildDate>
+    <lastBuildDate>Thu, 07 Mar 2019 22:22:29 +0800</lastBuildDate>
     
     <atom:link href="/tags/ipfs/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>IPFS 源码阅读 -- daemon 启动流程</title>
+      <link>/posts/yuan-ma-yue-du-zhi-daemon-qi-dong-liu-cheng/</link>
+      <pubDate>Thu, 07 Mar 2019 22:22:29 +0800</pubDate>
+      
+      <guid>/posts/yuan-ma-yue-du-zhi-daemon-qi-dong-liu-cheng/</guid>
+      <description>&lt;h2 id=&#34;daemon-的定义&#34;&gt;daemon 的定义&lt;/h2&gt;
+&lt;p&gt;ipfs daemon 命令的定义在 cmd/ipfs/daemon.go 中的 daemonCmd 变量，其中 Run 方法是 daemonFunc，daemonFunc 主要包含如下几个步骤：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;fsrepo.Open(): 初始化数据持久层，包括 blocks 和 DAG&lt;/li&gt;
+&lt;li&gt;core.NewNode(ncfg): 节点初始化&lt;/li&gt;
+&lt;li&gt;serveHTTPApi(): API HTTP 服务监听&lt;/li&gt;
+&lt;li&gt;mountFuse(): mount 目录 with FUSE&lt;/li&gt;
+&lt;li&gt;maybeRunGC(): 启动 Repo GC 任务监听&lt;/li&gt;
+&lt;li&gt;serveHTTPGateway(): HTTP Gateway 代理服务坚听&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;fsrepoopen-详解&#34;&gt;fsrepo.Open 详解&lt;/h2&gt;
+&lt;p&gt;参考 &lt;a href=&#34;http://localhost:1313/posts/ipfs-ming-ling-zhi-xing-liu-cheng/&#34;&gt;《IPFS 源码阅读 &amp;ndash; 命令执行流程》&lt;/a&gt; 文章中的 FSRepo 初始化逻辑。&lt;/p&gt;
+&lt;h2 id=&#34;corenewnode-详解&#34;&gt;core.NewNode 详解&lt;/h2&gt;
+&lt;p&gt;在 daemonCmd 中 node BuildCfg 被覆盖了，其值为：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// Start assembling node config
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;ncfg&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:=&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;BuildCfg&lt;/span&gt;{
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Repo&lt;/span&gt;:                        &lt;span style=&#34;color:#a6e22e&#34;&gt;repo&lt;/span&gt;,
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Permanent&lt;/span&gt;:                   &lt;span style=&#34;color:#66d9ef&#34;&gt;true&lt;/span&gt;, &lt;span style=&#34;color:#75715e&#34;&gt;// It is temporary way to signify that node is permanent
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Online&lt;/span&gt;:                      !&lt;span style=&#34;color:#a6e22e&#34;&gt;offline&lt;/span&gt;,
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;DisableEncryptedConnections&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;unencrypted&lt;/span&gt;,
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;ExtraOpts&lt;/span&gt;: &lt;span style=&#34;color:#66d9ef&#34;&gt;map&lt;/span&gt;[&lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;]&lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;{
+      &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;pubsub&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;pubsub&lt;/span&gt;,
+      &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;ipnsps&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;ipnsps&lt;/span&gt;,
+      &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;mplex&amp;#34;&lt;/span&gt;:  &lt;span style=&#34;color:#a6e22e&#34;&gt;mplex&lt;/span&gt;,
+   },
+   &lt;span style=&#34;color:#75715e&#34;&gt;//TODO(Kubuxu): refactor Online vs Offline by adding Permanent vs Ephemeral
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;}
+  
+&lt;span style=&#34;color:#75715e&#34;&gt;// with default dht config
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;ncfg&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Routing&lt;/span&gt; = &lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;DHTOption&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;core.NewNode(ctx, ncfg) 具体过程可以参考 &lt;a href=&#34;http://localhost:1313/posts/ipfs-ming-ling-zhi-xing-liu-cheng/&#34;&gt;《IPFS 源码阅读 &amp;ndash; 命令执行流程》&lt;/a&gt; 中的 Node 初始化设置，其中 cfg.Online  = true, 所以会分别执行：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;n.startOnlineServices(): 通过 bitswap 构建 Exchange&lt;/li&gt;
+&lt;li&gt;n.startLateOnlineServices(): 通过 routing 创建 Reprovider&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;servehttpapi-详解&#34;&gt;serveHTTPApi 详解&lt;/h2&gt;
+&lt;p&gt;API  HTTP 服务监听，根据配置文件中的 Addresses.API 以及运行命令参数 &amp;ndash;api 决定其监听地址。&lt;/p&gt;
+&lt;h2 id=&#34;mountfuse-详解&#34;&gt;mountFuse 详解&lt;/h2&gt;
+&lt;p&gt;当启动添加参数  &amp;ndash;mount 的时候，会使用到 mount Fuse 的功能，最终调用的方式是 fuse/node/mount_unix.go 中的 doMount 方法，而该方法中分别执行 fuse/readonly/mount_unix.go 和 fuse/ipns/mount_unix.go 中的 Mount 方法。&lt;/p&gt;
+&lt;h2 id=&#34;mayberungc-详解&#34;&gt;maybeRunGC 详解&lt;/h2&gt;
+&lt;p&gt;当启动添加 &amp;ndash;enable-gc 参数的时候，可以让 repo 启动执行 GC，对内容进行回收，本质执行的代码是 pin/gc/gc.go 的 GC 方法。具体步骤大致分为：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;标记不需要删除的 cid，即所有递归和直接 pinned , bestEffortRoots（白名单，例如filesRoot）, 以及 pinner 内部使用的 blocks。&lt;/li&gt;
+&lt;li&gt;扫描所有 blocks 中的所有key, 依次检测是否需要删除。&lt;/li&gt;
+&lt;li&gt;如果需要删除，直接删除本地 /blocks/下的文件即可。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;servehttpgateway-详解&#34;&gt;serveHTTPGateway 详解&lt;/h2&gt;
+&lt;p&gt;Gateway  HTTP 服务监听，根据配置文件中的 Addresses.Gateway 决定其监听地址，可以通过 gateway 服务，采用 http 方式访问 ipfs 网络中的内容。&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>IPFS 源码阅读 -- 命令执行流程</title>
+      <link>/posts/ipfs-ming-ling-zhi-xing-liu-cheng/</link>
+      <pubDate>Fri, 01 Mar 2019 20:07:52 +0800</pubDate>
+      
+      <guid>/posts/ipfs-ming-ling-zhi-xing-liu-cheng/</guid>
+      <description>&lt;p&gt;使用 IPFS 的命令（包括 daemon）会按照一个通用的流程来执行，下面我们就来看看整个命令执行过程。&lt;/p&gt;
+&lt;h2 id=&#34;ipfs-command-定义&#34;&gt;IPFS command 定义&lt;/h2&gt;
+&lt;p&gt;Command 结构体是对 ipfs 命令的一个抽象，其中最核心的是  PreRun, Run, PostRun，通常执行的过程是先执行 PreRun -&amp;gt; go PostRun -&amp;gt; Run。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// Command is a runnable command, with input arguments and options (flags).
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// It can also have Subcommands, to group units of work into sets.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Command&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Options&lt;/span&gt;   []&lt;span style=&#34;color:#a6e22e&#34;&gt;cmdkit&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Option&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Arguments&lt;/span&gt; []&lt;span style=&#34;color:#a6e22e&#34;&gt;cmdkit&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Argument&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;PreRun&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;req&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;Request&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;env&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Environment&lt;/span&gt;) &lt;span style=&#34;color:#66d9ef&#34;&gt;error&lt;/span&gt;
+ 
+   &lt;span style=&#34;color:#75715e&#34;&gt;// Run is the function that processes the request to generate a response.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// Note that when executing the command over the HTTP API you can only read
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// after writing when using multipart requests. The request body will not be
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// available for reading after the HTTP connection has been written to.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Run&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;Function&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;PostRun&lt;/span&gt;  &lt;span style=&#34;color:#a6e22e&#34;&gt;PostRunMap&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Encoders&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;EncoderMap&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Helptext&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;cmdkit&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;HelpText&lt;/span&gt;
+ 
+   &lt;span style=&#34;color:#75715e&#34;&gt;// External denotes that a command is actually an external binary.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// fewer checks and validations will be performed on such commands.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;External&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+ 
+   &lt;span style=&#34;color:#75715e&#34;&gt;// Type describes the type of the output of the Command&amp;#39;s Run Function.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// In precise terms, the value of Type is an instance of the return type of
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// the Run Function.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;//
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// ie. If command Run returns &amp;amp;Block{}, then Command.Type == &amp;amp;Block{}
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Type&lt;/span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;interface&lt;/span&gt;{}
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Subcommands&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;map&lt;/span&gt;[&lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;]&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;Command&lt;/span&gt;
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;执行流程&#34;&gt;执行流程&lt;/h2&gt;
+&lt;p&gt;&lt;img src=&#34;/images/cmd-01.png&#34; alt=&#34;cmd-01&#34;&gt;&lt;/p&gt;
+&lt;p&gt;流程说明：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;定义 buildEnv， makeExecutor 函数&lt;/li&gt;
+&lt;li&gt;通过 cli.Run() 执行命令:  buildEnv() -&amp;gt; makeExecutor()&lt;/li&gt;
+&lt;li&gt;执行 Run 的过程中还会涉及到到配置和节点实例化&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;oldcmdscontext-详解&#34;&gt;oldcmds.Context 详解&lt;/h2&gt;
+&lt;p&gt;一个 ipfs cmd 运行时会携带一个运行时的上下文，即一个  commands/request.go 中的 Context 对象，它定义如下：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Context&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Online&lt;/span&gt;     &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;ConfigRoot&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;ReqLog&lt;/span&gt;     &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;ReqLog&lt;/span&gt;
+ 
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;config&lt;/span&gt;     &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;config&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Config&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;LoadConfig&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;path&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;) (&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;config&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Config&lt;/span&gt;, &lt;span style=&#34;color:#66d9ef&#34;&gt;error&lt;/span&gt;)
+ 
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;api&lt;/span&gt;           &lt;span style=&#34;color:#a6e22e&#34;&gt;coreiface&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;CoreAPI&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;node&lt;/span&gt;          &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsNode&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;ConstructNode&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt;() (&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsNode&lt;/span&gt;, &lt;span style=&#34;color:#66d9ef&#34;&gt;error&lt;/span&gt;)
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;其中最关键的是 LoadConfig 和 ConstructNode，具体含义如下：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;LoadConfig: 加载配置文件&lt;/li&gt;
+&lt;li&gt;ConstructNode: 节点构造函数&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;而在 cmd/ipfs/main.go 的 mainRet() 函数中，它的定义如下：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;buildEnv&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;ctx&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;context&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Context&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;req&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;cmds&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Request&lt;/span&gt;) (&lt;span style=&#34;color:#a6e22e&#34;&gt;cmds&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Environment&lt;/span&gt;, &lt;span style=&#34;color:#66d9ef&#34;&gt;error&lt;/span&gt;) {
+   &lt;span style=&#34;color:#75715e&#34;&gt;// 此处省略代码
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// this sets up the function that will initialize the node
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// this is so that we can construct the node lazily.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;oldcmds&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Context&lt;/span&gt;{
+      &lt;span style=&#34;color:#a6e22e&#34;&gt;ConfigRoot&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;repoPath&lt;/span&gt;,
+      &lt;span style=&#34;color:#a6e22e&#34;&gt;LoadConfig&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;loadConfig&lt;/span&gt;,
+      &lt;span style=&#34;color:#a6e22e&#34;&gt;ReqLog&lt;/span&gt;:     &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;oldcmds&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;ReqLog&lt;/span&gt;{},
+      &lt;span style=&#34;color:#a6e22e&#34;&gt;ConstructNode&lt;/span&gt;: &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt;() (&lt;span style=&#34;color:#a6e22e&#34;&gt;n&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsNode&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;err&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;error&lt;/span&gt;) {
+         &lt;span style=&#34;color:#75715e&#34;&gt;// 此处省略代码
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;         &lt;span style=&#34;color:#a6e22e&#34;&gt;r&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;err&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:=&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;fsrepo&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Open&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;repoPath&lt;/span&gt;)
+         &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;err&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;!=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;nil&lt;/span&gt; { &lt;span style=&#34;color:#75715e&#34;&gt;// repo is owned by the node
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;nil&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;err&lt;/span&gt;
+         }
+ 
+         &lt;span style=&#34;color:#75715e&#34;&gt;// ok everything is good. set it on the invocation (for ownership)
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;         &lt;span style=&#34;color:#75715e&#34;&gt;// and return it.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;         &lt;span style=&#34;color:#a6e22e&#34;&gt;n&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;err&lt;/span&gt; = &lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;NewNode&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;ctx&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;BuildCfg&lt;/span&gt;{
+            &lt;span style=&#34;color:#a6e22e&#34;&gt;Repo&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;r&lt;/span&gt;,
+         })
+         &lt;span style=&#34;color:#75715e&#34;&gt;// 此处省略代码
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;      },
+   }, &lt;span style=&#34;color:#66d9ef&#34;&gt;nil&lt;/span&gt;
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;配置实例化&#34;&gt;配置实例化&lt;/h2&gt;
+&lt;p&gt;go-ipfs-config/config.go 中的 Config 是整个 IPFS 的配置说明，它由上面提到的命令运行的上下文 Context 来管理。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;定义:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// Config is used to load ipfs config files.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Config&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Identity&lt;/span&gt;  &lt;span style=&#34;color:#a6e22e&#34;&gt;Identity&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s peer identity
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Datastore&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Datastore&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s storage
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Addresses&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Addresses&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s addresses
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Mounts&lt;/span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;Mounts&lt;/span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s mount points
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Discovery&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Discovery&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s discovery mechanisms
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Routing&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Routing&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s routing settings
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Ipns&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;Ipns&lt;/span&gt;      &lt;span style=&#34;color:#75715e&#34;&gt;// Ipns settings
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Bootstrap&lt;/span&gt; []&lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// local nodes&amp;#39;s bootstrap peer addresses
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Gateway&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Gateway&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s gateway server options
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;API&lt;/span&gt;       &lt;span style=&#34;color:#a6e22e&#34;&gt;API&lt;/span&gt;       &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s API settings
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Swarm&lt;/span&gt;     &lt;span style=&#34;color:#a6e22e&#34;&gt;SwarmConfig&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Pubsub&lt;/span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;PubsubConfig&lt;/span&gt;
+ 
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Reprovider&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Reprovider&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Experimental&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Experiments&lt;/span&gt;
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;实例化：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;调用 cmd.Context  中的 LoadConfig 函数（在 buildEnv 中有定义），实际调用的是 cmd/ipfs/main.go 中的 loadConfig() 函数，本质是一个简单的 JSON unmarshal 操作,具体过程如下：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/cmd-02.png&#34; alt=&#34;cmd-02&#34;&gt;&lt;/p&gt;
+&lt;h2 id=&#34;node-实例化&#34;&gt;Node 实例化&lt;/h2&gt;
+&lt;p&gt;IPFS 运行时候需要实例化一个 core/core.go  IpfsNode 对象，它用来封装对 整个 IPFS 节点的管理。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;定义：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// IpfsNode is IPFS Core module. It represents an IPFS instance.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsNode&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
+ 
+   &lt;span style=&#34;color:#75715e&#34;&gt;// Self
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Identity&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;peer&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;ID&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// the local node&amp;#39;s identity
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt; 
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Repo&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;repo&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Repo&lt;/span&gt;
+ 
+   &lt;span style=&#34;color:#75715e&#34;&gt;// Local node
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Pinning&lt;/span&gt;         &lt;span style=&#34;color:#a6e22e&#34;&gt;pin&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Pinner&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// the pinning manager
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Mounts&lt;/span&gt;          &lt;span style=&#34;color:#a6e22e&#34;&gt;Mounts&lt;/span&gt;     &lt;span style=&#34;color:#75715e&#34;&gt;// current mount state, if any.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;PrivateKey&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;ic&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;PrivKey&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// the local node&amp;#39;s private Key
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;PNetFingerprint&lt;/span&gt; []&lt;span style=&#34;color:#66d9ef&#34;&gt;byte&lt;/span&gt;     &lt;span style=&#34;color:#75715e&#34;&gt;// fingerprint of private network
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt; 
+   &lt;span style=&#34;color:#75715e&#34;&gt;// Services
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Peerstore&lt;/span&gt;       &lt;span style=&#34;color:#a6e22e&#34;&gt;pstore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Peerstore&lt;/span&gt;     &lt;span style=&#34;color:#75715e&#34;&gt;// storage for other Peer instances
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Blockstore&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;bstore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;GCBlockstore&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// the block store (lower level)
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Filestore&lt;/span&gt;       &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;filestore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Filestore&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// the filestore blockstore
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;BaseBlocks&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;bstore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Blockstore&lt;/span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// the raw blockstore, no filestore wrapping
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;GCLocker&lt;/span&gt;        &lt;span style=&#34;color:#a6e22e&#34;&gt;bstore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;GCLocker&lt;/span&gt;      &lt;span style=&#34;color:#75715e&#34;&gt;// the locker used to protect the blockstore during gc
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Blocks&lt;/span&gt;          &lt;span style=&#34;color:#a6e22e&#34;&gt;bserv&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;BlockService&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// the block service, get/add blocks.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;DAG&lt;/span&gt;             &lt;span style=&#34;color:#a6e22e&#34;&gt;ipld&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;DAGService&lt;/span&gt;      &lt;span style=&#34;color:#75715e&#34;&gt;// the merkle dag service, get/add objects.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Resolver&lt;/span&gt;        &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;resolver&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Resolver&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// the path resolution system
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Reporter&lt;/span&gt;        &lt;span style=&#34;color:#a6e22e&#34;&gt;metrics&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Reporter&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Discovery&lt;/span&gt;       &lt;span style=&#34;color:#a6e22e&#34;&gt;discovery&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Service&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;FilesRoot&lt;/span&gt;       &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;mfs&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Root&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;RecordValidator&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;record&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Validator&lt;/span&gt;
+ 
+   &lt;span style=&#34;color:#75715e&#34;&gt;// Online
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;PeerHost&lt;/span&gt;     &lt;span style=&#34;color:#a6e22e&#34;&gt;p2phost&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Host&lt;/span&gt;        &lt;span style=&#34;color:#75715e&#34;&gt;// the network host (server+client)
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Bootstrapper&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;io&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Closer&lt;/span&gt;           &lt;span style=&#34;color:#75715e&#34;&gt;// the periodic bootstrapper
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Routing&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;routing&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsRouting&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// the routing system. recommend ipfs-dht
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Exchange&lt;/span&gt;     &lt;span style=&#34;color:#a6e22e&#34;&gt;exchange&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Interface&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// the block exchange + strategy (bitswap)
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Namesys&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;namesys&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;NameSystem&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// the name system, resolves paths to hashes
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Reprovider&lt;/span&gt;   &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;rp&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Reprovider&lt;/span&gt;      &lt;span style=&#34;color:#75715e&#34;&gt;// the value reprovider system
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;IpnsRepub&lt;/span&gt;    &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;ipnsrp&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Republisher&lt;/span&gt;
+ 
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;PubSub&lt;/span&gt;   &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;pubsub&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;PubSub&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;PSRouter&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;psrouter&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;PubsubValueStore&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;DHT&lt;/span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;dht&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsDHT&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;P2P&lt;/span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;p2p&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;P2P&lt;/span&gt;
+ 
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;proc&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;goprocess&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Process&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;ctx&lt;/span&gt;  &lt;span style=&#34;color:#a6e22e&#34;&gt;context&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Context&lt;/span&gt;
+ 
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;mode&lt;/span&gt;         &lt;span style=&#34;color:#a6e22e&#34;&gt;mode&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;localModeSet&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;实例化：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;调用 cmd.Context  中的 ConstructNode 函数（在 buildEnv 中有定义），具体过程如下：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/cmd-03.png&#34; alt=&#34;cmd-03&#34;&gt;&lt;/p&gt;
+&lt;p&gt;可以看到，整个过程主要分为以下三步：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;FSRepo 初始化&lt;/li&gt;
+&lt;li&gt;BuildCfg 初始化&lt;/li&gt;
+&lt;li&gt;Node 的初始化&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;fsrepo-初始化&#34;&gt;FSRepo 初始化&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;repo/fsrepo/fsrepo.go 中的 FSRepo 的定义：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// FSRepo represents an IPFS FileSystem Repo. It is safe for use by multiple
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// callers.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;FSRepo&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
+   &lt;span style=&#34;color:#75715e&#34;&gt;// has Close been called already
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;closed&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+   &lt;span style=&#34;color:#75715e&#34;&gt;// path is the file-system path
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;path&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;
+   &lt;span style=&#34;color:#75715e&#34;&gt;// lockfile is the file system lock to prevent others from opening
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// the same fsrepo path concurrently
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;lockfile&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;io&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Closer&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;config&lt;/span&gt;   &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;config&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Config&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;ds&lt;/span&gt;       &lt;span style=&#34;color:#a6e22e&#34;&gt;repo&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Datastore&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;keystore&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;keystore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Keystore&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;filemgr&lt;/span&gt;  &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;filestore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;FileManager&lt;/span&gt;
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;初始化流程：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&#34;/images/cmd-04.png&#34; alt=&#34;cmd-04&#34;&gt;&lt;/p&gt;
+&lt;p&gt;IPFS 整个数据存储都是在这步骤完成的，其中主要包含存储 blocks 块的 FlatfsDatastore 以及 KV 元信息存储的 LeveldsDatastore。&lt;/p&gt;
+&lt;h3 id=&#34;node-初始化设置&#34;&gt;Node 初始化设置&lt;/h3&gt;
+&lt;p&gt;&lt;img src=&#34;/images/cmd-05.png&#34; alt=&#34;cmd-05&#34;&gt;&lt;/p&gt;
+&lt;p&gt;到此，我们通过阅读 IPFS 源代码，基本了解了其 Command 的执行流程，也对 IPFS 的启动有了一个深入的了解。&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>IPFS PubSub 从入门到精通</title>
@@ -416,274 +684,6 @@ hello, this IPNS example
 &lt;li&gt;IPFS 对于单个文件是顺序下载的，在下载过程中会提前准备好10个 Blocks 的内容，所以单个文件下载最多消耗256KB*10=2.5MB 内存。&lt;/li&gt;
 &lt;li&gt;下载消耗的总内存 = 总下载任务数 * 2.5MB。&lt;/li&gt;
 &lt;/ul&gt;
-</description>
-    </item>
-    
-    <item>
-      <title>IPFS 源码阅读 -- daemon 启动流程</title>
-      <link>/posts/yuan-ma-yue-du-zhi-daemon-qi-dong-liu-cheng/</link>
-      <pubDate>Wed, 14 Nov 2018 16:22:29 +0800</pubDate>
-      
-      <guid>/posts/yuan-ma-yue-du-zhi-daemon-qi-dong-liu-cheng/</guid>
-      <description>&lt;h2 id=&#34;daemon-的定义&#34;&gt;daemon 的定义&lt;/h2&gt;
-&lt;p&gt;ipfs daemon 命令的定义在 cmd/ipfs/daemon.go 中的 daemonCmd 变量，其中 Run 方法是 daemonFunc，daemonFunc 主要包含如下几个步骤：&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;fsrepo.Open(): 初始化数据持久层，包括 blocks 和 DAG&lt;/li&gt;
-&lt;li&gt;core.NewNode(ncfg): 节点初始化&lt;/li&gt;
-&lt;li&gt;serveHTTPApi(): API HTTP 服务监听&lt;/li&gt;
-&lt;li&gt;mountFuse(): mount 目录 with FUSE&lt;/li&gt;
-&lt;li&gt;maybeRunGC(): 启动 Repo GC 任务监听&lt;/li&gt;
-&lt;li&gt;serveHTTPGateway(): HTTP Gateway 代理服务坚听&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h2 id=&#34;fsrepoopen-详解&#34;&gt;fsrepo.Open 详解&lt;/h2&gt;
-&lt;p&gt;参考 &lt;a href=&#34;http://localhost:1313/posts/ipfs-ming-ling-zhi-xing-liu-cheng/&#34;&gt;《IPFS 源码阅读 &amp;ndash; 命令执行流程》&lt;/a&gt; 文章中的 FSRepo 初始化逻辑。&lt;/p&gt;
-&lt;h2 id=&#34;corenewnode-详解&#34;&gt;core.NewNode 详解&lt;/h2&gt;
-&lt;p&gt;在 daemonCmd 中 node BuildCfg 被覆盖了，其值为：&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// Start assembling node config
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;ncfg&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:=&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;BuildCfg&lt;/span&gt;{
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Repo&lt;/span&gt;:                        &lt;span style=&#34;color:#a6e22e&#34;&gt;repo&lt;/span&gt;,
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Permanent&lt;/span&gt;:                   &lt;span style=&#34;color:#66d9ef&#34;&gt;true&lt;/span&gt;, &lt;span style=&#34;color:#75715e&#34;&gt;// It is temporary way to signify that node is permanent
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Online&lt;/span&gt;:                      !&lt;span style=&#34;color:#a6e22e&#34;&gt;offline&lt;/span&gt;,
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;DisableEncryptedConnections&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;unencrypted&lt;/span&gt;,
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;ExtraOpts&lt;/span&gt;: &lt;span style=&#34;color:#66d9ef&#34;&gt;map&lt;/span&gt;[&lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;]&lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;{
-      &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;pubsub&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;pubsub&lt;/span&gt;,
-      &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;ipnsps&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;ipnsps&lt;/span&gt;,
-      &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;mplex&amp;#34;&lt;/span&gt;:  &lt;span style=&#34;color:#a6e22e&#34;&gt;mplex&lt;/span&gt;,
-   },
-   &lt;span style=&#34;color:#75715e&#34;&gt;//TODO(Kubuxu): refactor Online vs Offline by adding Permanent vs Ephemeral
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;}
-  
-&lt;span style=&#34;color:#75715e&#34;&gt;// with default dht config
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;ncfg&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Routing&lt;/span&gt; = &lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;DHTOption&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;core.NewNode(ctx, ncfg) 具体过程可以参考 &lt;a href=&#34;http://localhost:1313/posts/ipfs-ming-ling-zhi-xing-liu-cheng/&#34;&gt;《IPFS 源码阅读 &amp;ndash; 命令执行流程》&lt;/a&gt; 中的 Node 初始化设置，其中 cfg.Online  = true, 所以会分别执行：&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;n.startOnlineServices(): 通过 bitswap 构建 Exchange&lt;/li&gt;
-&lt;li&gt;n.startLateOnlineServices(): 通过 routing 创建 Reprovider&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h2 id=&#34;servehttpapi-详解&#34;&gt;serveHTTPApi 详解&lt;/h2&gt;
-&lt;p&gt;API  HTTP 服务监听，根据配置文件中的 Addresses.API 以及运行命令参数 &amp;ndash;api 决定其监听地址。&lt;/p&gt;
-&lt;h2 id=&#34;mountfuse-详解&#34;&gt;mountFuse 详解&lt;/h2&gt;
-&lt;p&gt;当启动添加参数  &amp;ndash;mount 的时候，会使用到 mount Fuse 的功能，最终调用的方式是 fuse/node/mount_unix.go 中的 doMount 方法，而该方法中分别执行 fuse/readonly/mount_unix.go 和 fuse/ipns/mount_unix.go 中的 Mount 方法。&lt;/p&gt;
-&lt;h2 id=&#34;mayberungc-详解&#34;&gt;maybeRunGC 详解&lt;/h2&gt;
-&lt;p&gt;当启动添加 &amp;ndash;enable-gc 参数的时候，可以让 repo 启动执行 GC，对内容进行回收，本质执行的代码是 pin/gc/gc.go 的 GC 方法。具体步骤大致分为：&lt;/p&gt;
-&lt;ol&gt;
-&lt;li&gt;标记不需要删除的 cid，即所有递归和直接 pinned , bestEffortRoots（白名单，例如filesRoot）, 以及 pinner 内部使用的 blocks。&lt;/li&gt;
-&lt;li&gt;扫描所有 blocks 中的所有key, 依次检测是否需要删除。&lt;/li&gt;
-&lt;li&gt;如果需要删除，直接删除本地 /blocks/下的文件即可。&lt;/li&gt;
-&lt;/ol&gt;
-&lt;h2 id=&#34;servehttpgateway-详解&#34;&gt;serveHTTPGateway 详解&lt;/h2&gt;
-&lt;p&gt;Gateway  HTTP 服务监听，根据配置文件中的 Addresses.Gateway 决定其监听地址，可以通过 gateway 服务，采用 http 方式访问 ipfs 网络中的内容。&lt;/p&gt;
-</description>
-    </item>
-    
-    <item>
-      <title>IPFS 源码阅读 -- 命令执行流程</title>
-      <link>/posts/ipfs-ming-ling-zhi-xing-liu-cheng/</link>
-      <pubDate>Mon, 12 Nov 2018 16:07:52 +0800</pubDate>
-      
-      <guid>/posts/ipfs-ming-ling-zhi-xing-liu-cheng/</guid>
-      <description>&lt;p&gt;使用 IPFS 的命令（包括 daemon）会按照一个通用的流程来执行，下面我们就来看看整个命令执行过程。&lt;/p&gt;
-&lt;h2 id=&#34;ipfs-command-定义&#34;&gt;IPFS command 定义&lt;/h2&gt;
-&lt;p&gt;Command 结构体是对 ipfs 命令的一个抽象，其中最核心的是  PreRun, Run, PostRun，通常执行的过程是先执行 PreRun -&amp;gt; go PostRun -&amp;gt; Run。&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// Command is a runnable command, with input arguments and options (flags).
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// It can also have Subcommands, to group units of work into sets.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Command&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Options&lt;/span&gt;   []&lt;span style=&#34;color:#a6e22e&#34;&gt;cmdkit&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Option&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Arguments&lt;/span&gt; []&lt;span style=&#34;color:#a6e22e&#34;&gt;cmdkit&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Argument&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;PreRun&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;req&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;Request&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;env&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Environment&lt;/span&gt;) &lt;span style=&#34;color:#66d9ef&#34;&gt;error&lt;/span&gt;
- 
-   &lt;span style=&#34;color:#75715e&#34;&gt;// Run is the function that processes the request to generate a response.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// Note that when executing the command over the HTTP API you can only read
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// after writing when using multipart requests. The request body will not be
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// available for reading after the HTTP connection has been written to.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Run&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;Function&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;PostRun&lt;/span&gt;  &lt;span style=&#34;color:#a6e22e&#34;&gt;PostRunMap&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Encoders&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;EncoderMap&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Helptext&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;cmdkit&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;HelpText&lt;/span&gt;
- 
-   &lt;span style=&#34;color:#75715e&#34;&gt;// External denotes that a command is actually an external binary.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// fewer checks and validations will be performed on such commands.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;External&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
- 
-   &lt;span style=&#34;color:#75715e&#34;&gt;// Type describes the type of the output of the Command&amp;#39;s Run Function.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// In precise terms, the value of Type is an instance of the return type of
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// the Run Function.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;//
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// ie. If command Run returns &amp;amp;Block{}, then Command.Type == &amp;amp;Block{}
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Type&lt;/span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;interface&lt;/span&gt;{}
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Subcommands&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;map&lt;/span&gt;[&lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;]&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;Command&lt;/span&gt;
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;执行流程&#34;&gt;执行流程&lt;/h2&gt;
-&lt;p&gt;&lt;img src=&#34;/images/cmd-01.png&#34; alt=&#34;cmd-01&#34;&gt;&lt;/p&gt;
-&lt;p&gt;流程说明：&lt;/p&gt;
-&lt;ol&gt;
-&lt;li&gt;定义 buildEnv， makeExecutor 函数&lt;/li&gt;
-&lt;li&gt;通过 cli.Run() 执行命令:  buildEnv() -&amp;gt; makeExecutor()&lt;/li&gt;
-&lt;li&gt;执行 Run 的过程中还会涉及到到配置和节点实例化&lt;/li&gt;
-&lt;/ol&gt;
-&lt;h2 id=&#34;oldcmdscontext-详解&#34;&gt;oldcmds.Context 详解&lt;/h2&gt;
-&lt;p&gt;一个 ipfs cmd 运行时会携带一个运行时的上下文，即一个  commands/request.go 中的 Context 对象，它定义如下：&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Context&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Online&lt;/span&gt;     &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;ConfigRoot&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;ReqLog&lt;/span&gt;     &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;ReqLog&lt;/span&gt;
- 
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;config&lt;/span&gt;     &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;config&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Config&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;LoadConfig&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;path&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;) (&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;config&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Config&lt;/span&gt;, &lt;span style=&#34;color:#66d9ef&#34;&gt;error&lt;/span&gt;)
- 
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;api&lt;/span&gt;           &lt;span style=&#34;color:#a6e22e&#34;&gt;coreiface&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;CoreAPI&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;node&lt;/span&gt;          &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsNode&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;ConstructNode&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt;() (&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsNode&lt;/span&gt;, &lt;span style=&#34;color:#66d9ef&#34;&gt;error&lt;/span&gt;)
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;其中最关键的是 LoadConfig 和 ConstructNode，具体含义如下：&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;LoadConfig: 加载配置文件&lt;/li&gt;
-&lt;li&gt;ConstructNode: 节点构造函数&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;而在 cmd/ipfs/main.go 的 mainRet() 函数中，它的定义如下：&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;buildEnv&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;ctx&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;context&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Context&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;req&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;cmds&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Request&lt;/span&gt;) (&lt;span style=&#34;color:#a6e22e&#34;&gt;cmds&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Environment&lt;/span&gt;, &lt;span style=&#34;color:#66d9ef&#34;&gt;error&lt;/span&gt;) {
-   &lt;span style=&#34;color:#75715e&#34;&gt;// 此处省略代码
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// this sets up the function that will initialize the node
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// this is so that we can construct the node lazily.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;oldcmds&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Context&lt;/span&gt;{
-      &lt;span style=&#34;color:#a6e22e&#34;&gt;ConfigRoot&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;repoPath&lt;/span&gt;,
-      &lt;span style=&#34;color:#a6e22e&#34;&gt;LoadConfig&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;loadConfig&lt;/span&gt;,
-      &lt;span style=&#34;color:#a6e22e&#34;&gt;ReqLog&lt;/span&gt;:     &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;oldcmds&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;ReqLog&lt;/span&gt;{},
-      &lt;span style=&#34;color:#a6e22e&#34;&gt;ConstructNode&lt;/span&gt;: &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt;() (&lt;span style=&#34;color:#a6e22e&#34;&gt;n&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsNode&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;err&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;error&lt;/span&gt;) {
-         &lt;span style=&#34;color:#75715e&#34;&gt;// 此处省略代码
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;         &lt;span style=&#34;color:#a6e22e&#34;&gt;r&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;err&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:=&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;fsrepo&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Open&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;repoPath&lt;/span&gt;)
-         &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;err&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;!=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;nil&lt;/span&gt; { &lt;span style=&#34;color:#75715e&#34;&gt;// repo is owned by the node
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;nil&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;err&lt;/span&gt;
-         }
- 
-         &lt;span style=&#34;color:#75715e&#34;&gt;// ok everything is good. set it on the invocation (for ownership)
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;         &lt;span style=&#34;color:#75715e&#34;&gt;// and return it.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;         &lt;span style=&#34;color:#a6e22e&#34;&gt;n&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;err&lt;/span&gt; = &lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;NewNode&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;ctx&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;BuildCfg&lt;/span&gt;{
-            &lt;span style=&#34;color:#a6e22e&#34;&gt;Repo&lt;/span&gt;: &lt;span style=&#34;color:#a6e22e&#34;&gt;r&lt;/span&gt;,
-         })
-         &lt;span style=&#34;color:#75715e&#34;&gt;// 此处省略代码
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;      },
-   }, &lt;span style=&#34;color:#66d9ef&#34;&gt;nil&lt;/span&gt;
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;配置实例化&#34;&gt;配置实例化&lt;/h2&gt;
-&lt;p&gt;go-ipfs-config/config.go 中的 Config 是整个 IPFS 的配置说明，它由上面提到的命令运行的上下文 Context 来管理。&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;定义:&lt;/li&gt;
-&lt;/ul&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// Config is used to load ipfs config files.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Config&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Identity&lt;/span&gt;  &lt;span style=&#34;color:#a6e22e&#34;&gt;Identity&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s peer identity
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Datastore&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Datastore&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s storage
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Addresses&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Addresses&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s addresses
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Mounts&lt;/span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;Mounts&lt;/span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s mount points
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Discovery&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Discovery&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s discovery mechanisms
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Routing&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Routing&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s routing settings
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Ipns&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;Ipns&lt;/span&gt;      &lt;span style=&#34;color:#75715e&#34;&gt;// Ipns settings
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Bootstrap&lt;/span&gt; []&lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// local nodes&amp;#39;s bootstrap peer addresses
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Gateway&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Gateway&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s gateway server options
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;API&lt;/span&gt;       &lt;span style=&#34;color:#a6e22e&#34;&gt;API&lt;/span&gt;       &lt;span style=&#34;color:#75715e&#34;&gt;// local node&amp;#39;s API settings
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Swarm&lt;/span&gt;     &lt;span style=&#34;color:#a6e22e&#34;&gt;SwarmConfig&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Pubsub&lt;/span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;PubsubConfig&lt;/span&gt;
- 
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Reprovider&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Reprovider&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Experimental&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Experiments&lt;/span&gt;
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
-&lt;li&gt;实例化：&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;调用 cmd.Context  中的 LoadConfig 函数（在 buildEnv 中有定义），实际调用的是 cmd/ipfs/main.go 中的 loadConfig() 函数，本质是一个简单的 JSON unmarshal 操作,具体过程如下：&lt;/p&gt;
-&lt;p&gt;&lt;img src=&#34;/images/cmd-02.png&#34; alt=&#34;cmd-02&#34;&gt;&lt;/p&gt;
-&lt;h2 id=&#34;node-实例化&#34;&gt;Node 实例化&lt;/h2&gt;
-&lt;p&gt;IPFS 运行时候需要实例化一个 core/core.go  IpfsNode 对象，它用来封装对 整个 IPFS 节点的管理。&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;定义：&lt;/li&gt;
-&lt;/ul&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// IpfsNode is IPFS Core module. It represents an IPFS instance.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsNode&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
- 
-   &lt;span style=&#34;color:#75715e&#34;&gt;// Self
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Identity&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;peer&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;ID&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// the local node&amp;#39;s identity
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt; 
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Repo&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;repo&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Repo&lt;/span&gt;
- 
-   &lt;span style=&#34;color:#75715e&#34;&gt;// Local node
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Pinning&lt;/span&gt;         &lt;span style=&#34;color:#a6e22e&#34;&gt;pin&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Pinner&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// the pinning manager
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Mounts&lt;/span&gt;          &lt;span style=&#34;color:#a6e22e&#34;&gt;Mounts&lt;/span&gt;     &lt;span style=&#34;color:#75715e&#34;&gt;// current mount state, if any.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;PrivateKey&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;ic&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;PrivKey&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// the local node&amp;#39;s private Key
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;PNetFingerprint&lt;/span&gt; []&lt;span style=&#34;color:#66d9ef&#34;&gt;byte&lt;/span&gt;     &lt;span style=&#34;color:#75715e&#34;&gt;// fingerprint of private network
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt; 
-   &lt;span style=&#34;color:#75715e&#34;&gt;// Services
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Peerstore&lt;/span&gt;       &lt;span style=&#34;color:#a6e22e&#34;&gt;pstore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Peerstore&lt;/span&gt;     &lt;span style=&#34;color:#75715e&#34;&gt;// storage for other Peer instances
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Blockstore&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;bstore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;GCBlockstore&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// the block store (lower level)
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Filestore&lt;/span&gt;       &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;filestore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Filestore&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// the filestore blockstore
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;BaseBlocks&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;bstore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Blockstore&lt;/span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// the raw blockstore, no filestore wrapping
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;GCLocker&lt;/span&gt;        &lt;span style=&#34;color:#a6e22e&#34;&gt;bstore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;GCLocker&lt;/span&gt;      &lt;span style=&#34;color:#75715e&#34;&gt;// the locker used to protect the blockstore during gc
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Blocks&lt;/span&gt;          &lt;span style=&#34;color:#a6e22e&#34;&gt;bserv&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;BlockService&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// the block service, get/add blocks.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;DAG&lt;/span&gt;             &lt;span style=&#34;color:#a6e22e&#34;&gt;ipld&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;DAGService&lt;/span&gt;      &lt;span style=&#34;color:#75715e&#34;&gt;// the merkle dag service, get/add objects.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Resolver&lt;/span&gt;        &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;resolver&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Resolver&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// the path resolution system
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Reporter&lt;/span&gt;        &lt;span style=&#34;color:#a6e22e&#34;&gt;metrics&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Reporter&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;Discovery&lt;/span&gt;       &lt;span style=&#34;color:#a6e22e&#34;&gt;discovery&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Service&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;FilesRoot&lt;/span&gt;       &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;mfs&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Root&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;RecordValidator&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;record&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Validator&lt;/span&gt;
- 
-   &lt;span style=&#34;color:#75715e&#34;&gt;// Online
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;PeerHost&lt;/span&gt;     &lt;span style=&#34;color:#a6e22e&#34;&gt;p2phost&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Host&lt;/span&gt;        &lt;span style=&#34;color:#75715e&#34;&gt;// the network host (server+client)
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Bootstrapper&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;io&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Closer&lt;/span&gt;           &lt;span style=&#34;color:#75715e&#34;&gt;// the periodic bootstrapper
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Routing&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;routing&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsRouting&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// the routing system. recommend ipfs-dht
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Exchange&lt;/span&gt;     &lt;span style=&#34;color:#a6e22e&#34;&gt;exchange&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Interface&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// the block exchange + strategy (bitswap)
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Namesys&lt;/span&gt;      &lt;span style=&#34;color:#a6e22e&#34;&gt;namesys&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;NameSystem&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// the name system, resolves paths to hashes
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;Reprovider&lt;/span&gt;   &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;rp&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Reprovider&lt;/span&gt;      &lt;span style=&#34;color:#75715e&#34;&gt;// the value reprovider system
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;IpnsRepub&lt;/span&gt;    &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;ipnsrp&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Republisher&lt;/span&gt;
- 
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;PubSub&lt;/span&gt;   &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;pubsub&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;PubSub&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;PSRouter&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;psrouter&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;PubsubValueStore&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;DHT&lt;/span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;dht&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsDHT&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;P2P&lt;/span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;p2p&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;P2P&lt;/span&gt;
- 
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;proc&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;goprocess&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Process&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;ctx&lt;/span&gt;  &lt;span style=&#34;color:#a6e22e&#34;&gt;context&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Context&lt;/span&gt;
- 
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;mode&lt;/span&gt;         &lt;span style=&#34;color:#a6e22e&#34;&gt;mode&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;localModeSet&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
-&lt;li&gt;实例化：&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;调用 cmd.Context  中的 ConstructNode 函数（在 buildEnv 中有定义），具体过程如下：&lt;/p&gt;
-&lt;p&gt;&lt;img src=&#34;/images/cmd-03.png&#34; alt=&#34;cmd-03&#34;&gt;&lt;/p&gt;
-&lt;p&gt;可以看到，整个过程主要分为以下三步：&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;FSRepo 初始化&lt;/li&gt;
-&lt;li&gt;BuildCfg 初始化&lt;/li&gt;
-&lt;li&gt;Node 的初始化&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h3 id=&#34;fsrepo-初始化&#34;&gt;FSRepo 初始化&lt;/h3&gt;
-&lt;ul&gt;
-&lt;li&gt;repo/fsrepo/fsrepo.go 中的 FSRepo 的定义：&lt;/li&gt;
-&lt;/ul&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// FSRepo represents an IPFS FileSystem Repo. It is safe for use by multiple
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// callers.
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;FSRepo&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
-   &lt;span style=&#34;color:#75715e&#34;&gt;// has Close been called already
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;closed&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
-   &lt;span style=&#34;color:#75715e&#34;&gt;// path is the file-system path
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;path&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;
-   &lt;span style=&#34;color:#75715e&#34;&gt;// lockfile is the file system lock to prevent others from opening
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// the same fsrepo path concurrently
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;lockfile&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;io&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Closer&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;config&lt;/span&gt;   &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;config&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Config&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;ds&lt;/span&gt;       &lt;span style=&#34;color:#a6e22e&#34;&gt;repo&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Datastore&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;keystore&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;keystore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Keystore&lt;/span&gt;
-   &lt;span style=&#34;color:#a6e22e&#34;&gt;filemgr&lt;/span&gt;  &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;filestore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;FileManager&lt;/span&gt;
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
-&lt;li&gt;初始化流程：&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;&lt;img src=&#34;/images/cmd-04.png&#34; alt=&#34;cmd-04&#34;&gt;&lt;/p&gt;
-&lt;p&gt;IPFS 整个数据存储都是在这步骤完成的，其中主要包含存储 blocks 块的 FlatfsDatastore 以及 KV 元信息存储的 LeveldsDatastore。&lt;/p&gt;
-&lt;h3 id=&#34;node-初始化设置&#34;&gt;Node 初始化设置&lt;/h3&gt;
-&lt;p&gt;&lt;img src=&#34;/images/cmd-05.png&#34; alt=&#34;cmd-05&#34;&gt;&lt;/p&gt;
-&lt;p&gt;到此，我们通过阅读 IPFS 源代码，基本了解了其 Command 的执行流程，也对 IPFS 的启动有了一个深入的了解。&lt;/p&gt;
 </description>
     </item>
     
