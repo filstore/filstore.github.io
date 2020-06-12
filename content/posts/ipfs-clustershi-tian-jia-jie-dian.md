@@ -1,5 +1,5 @@
 ---
-title: "IPFS Cluster 实战 -- 使用预设置添加节点"
+title: "IPFS Cluster 实战 -- 使用预设置添加新节点"
 date: 2019-03-22 20:13:52+0800
 summary:  本文主要讨论 ipfs cluster 中添加节点的其中一种方式，即采用预设置的静态添。
 tags: [ipfs, cluster]
