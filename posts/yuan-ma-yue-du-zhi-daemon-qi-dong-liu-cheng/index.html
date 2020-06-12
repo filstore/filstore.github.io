@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<title>IPFS 源码阅读 -- daemon 启动流程 - FILVIP</title>
+<meta name="description" content="">
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="/favicon.png">
+
+<link rel="stylesheet" href="/css/style.css?rnd=1591950593" />
+
+<link rel="stylesheet" href="/css/my.css?rnd=1591950593">
+
+<meta property="og:title" content="IPFS 源码阅读 -- daemon 启动流程" />
+<meta property="og:description" content="本文将带着大家一起通过源码来学习 IFPS daemon 的启动流程，加深对 IPFS 的认识。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/posts/yuan-ma-yue-du-zhi-daemon-qi-dong-liu-cheng/" />
+<meta property="og:image" content="/images/og-featured.png"/>
+<meta property="article:published_time" content="2018-11-14T16:22:29+08:00" />
+<meta property="article:modified_time" content="2018-11-14T16:22:29+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="/images/og-featured.png"/>
+
+<meta name="twitter:title" content="IPFS 源码阅读 -- daemon 启动流程"/>
+<meta name="twitter:description" content="本文将带着大家一起通过源码来学习 IFPS daemon 的启动流程，加深对 IPFS 的认识。"/>
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header> 
+            
+                <h1 class="site-header">
+    <a href="/">FILVIP</a>
+</h1>
+<nav>
+    
+    
+    <a class="" href="/tags/ipfs" title="IPFS">IPFS</a>
+    
+    <a class="" href="/tags/filecoin" title="FileCoin">FileCoin</a>
+    
+    <a class="" href="/posts/" title="Archive">Archive</a>
+    
+    <a class="" href="/about" title="About">About</a>
+    
+</nav>
+
+            
+        </header>
+        <main id="main" tabindex="-1"> 
+            
+
+    <article class="post">
+        <header>
+            <h1 class="post-title">IPFS 源码阅读 -- daemon 启动流程</h1>
+        </header>
+        <div class="content">
+            <h2 id="daemon-的定义">daemon 的定义</h2>
+<p>ipfs daemon 命令的定义在 cmd/ipfs/daemon.go 中的 daemonCmd 变量，其中 Run 方法是 daemonFunc，daemonFunc 主要包含如下几个步骤：</p>
+<ul>
+<li>fsrepo.Open(): 初始化数据持久层，包括 blocks 和 DAG</li>
+<li>core.NewNode(ncfg): 节点初始化</li>
+<li>serveHTTPApi(): API HTTP 服务监听</li>
+<li>mountFuse(): mount 目录 with FUSE</li>
+<li>maybeRunGC(): 启动 Repo GC 任务监听</li>
+<li>serveHTTPGateway(): HTTP Gateway 代理服务坚听</li>
+</ul>
+<h2 id="fsrepoopen-详解">fsrepo.Open 详解</h2>
+<p>参考 <a href="http://localhost:1313/posts/ipfs-ming-ling-zhi-xing-liu-cheng/">《IPFS 源码阅读 &ndash; 命令执行流程》</a> 文章中的 FSRepo 初始化逻辑。</p>
+<h2 id="corenewnode-详解">core.NewNode 详解</h2>
+<p>在 daemonCmd 中 node BuildCfg 被覆盖了，其值为：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#75715e">// Start assembling node config
+</span><span style="color:#75715e"></span><span style="color:#a6e22e">ncfg</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">core</span>.<span style="color:#a6e22e">BuildCfg</span>{
+   <span style="color:#a6e22e">Repo</span>:                        <span style="color:#a6e22e">repo</span>,
+   <span style="color:#a6e22e">Permanent</span>:                   <span style="color:#66d9ef">true</span>, <span style="color:#75715e">// It is temporary way to signify that node is permanent
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Online</span>:                      !<span style="color:#a6e22e">offline</span>,
+   <span style="color:#a6e22e">DisableEncryptedConnections</span>: <span style="color:#a6e22e">unencrypted</span>,
+   <span style="color:#a6e22e">ExtraOpts</span>: <span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">string</span>]<span style="color:#66d9ef">bool</span>{
+      <span style="color:#e6db74">&#34;pubsub&#34;</span>: <span style="color:#a6e22e">pubsub</span>,
+      <span style="color:#e6db74">&#34;ipnsps&#34;</span>: <span style="color:#a6e22e">ipnsps</span>,
+      <span style="color:#e6db74">&#34;mplex&#34;</span>:  <span style="color:#a6e22e">mplex</span>,
+   },
+   <span style="color:#75715e">//TODO(Kubuxu): refactor Online vs Offline by adding Permanent vs Ephemeral
+</span><span style="color:#75715e"></span>}
+  
+<span style="color:#75715e">// with default dht config
+</span><span style="color:#75715e"></span><span style="color:#a6e22e">ncfg</span>.<span style="color:#a6e22e">Routing</span> = <span style="color:#a6e22e">core</span>.<span style="color:#a6e22e">DHTOption</span>
+</code></pre></div><p>core.NewNode(ctx, ncfg) 具体过程可以参考 <a href="http://localhost:1313/posts/ipfs-ming-ling-zhi-xing-liu-cheng/">《IPFS 源码阅读 &ndash; 命令执行流程》</a> 中的 Node 初始化设置，其中 cfg.Online  = true, 所以会分别执行：</p>
+<ul>
+<li>n.startOnlineServices(): 通过 bitswap 构建 Exchange</li>
+<li>n.startLateOnlineServices(): 通过 routing 创建 Reprovider</li>
+</ul>
+<h2 id="servehttpapi-详解">serveHTTPApi 详解</h2>
+<p>API  HTTP 服务监听，根据配置文件中的 Addresses.API 以及运行命令参数 &ndash;api 决定其监听地址。</p>
+<h2 id="mountfuse-详解">mountFuse 详解</h2>
+<p>当启动添加参数  &ndash;mount 的时候，会使用到 mount Fuse 的功能，最终调用的方式是 fuse/node/mount_unix.go 中的 doMount 方法，而该方法中分别执行 fuse/readonly/mount_unix.go 和 fuse/ipns/mount_unix.go 中的 Mount 方法。</p>
+<h2 id="mayberungc-详解">maybeRunGC 详解</h2>
+<p>当启动添加 &ndash;enable-gc 参数的时候，可以让 repo 启动执行 GC，对内容进行回收，本质执行的代码是 pin/gc/gc.go 的 GC 方法。具体步骤大致分为：</p>
+<ol>
+<li>标记不需要删除的 cid，即所有递归和直接 pinned , bestEffortRoots（白名单，例如filesRoot）, 以及 pinner 内部使用的 blocks。</li>
+<li>扫描所有 blocks 中的所有key, 依次检测是否需要删除。</li>
+<li>如果需要删除，直接删除本地 /blocks/下的文件即可。</li>
+</ol>
+<h2 id="servehttpgateway-详解">serveHTTPGateway 详解</h2>
+<p>Gateway  HTTP 服务监听，根据配置文件中的 Addresses.Gateway 决定其监听地址，可以通过 gateway 服务，采用 http 方式访问 ipfs 网络中的内容。</p>
+
+        </div>
+        
+
+    
+
+
+<div class="post-info">
+    
+        <div class="post-date">2018-11-14</div>
+    
+    <div class="post-taxonomies">
+        
+            
+                <ul class="post-tags">
+                    
+                        <li><a href="/tags/ipfs">#ipfs</a></li>
+                    
+                </ul>
+        
+    </div>
+</div>
+
+    </article>
+
+    
+
+    
+
+
+        </main>
+        <footer>
+            
+                
+                
+
+                <p>© filstore.vip, 2020<br>
+Powered by <a target="_blank" href="https://gohugo.io/">Hugo</a>, theme <a target="_blank" href="https://github.com/mitrichius/hugo-theme-anubis">Anubis</a>.
+</p>
+            
+        </footer>
+    </div>
+</body>
+</html>

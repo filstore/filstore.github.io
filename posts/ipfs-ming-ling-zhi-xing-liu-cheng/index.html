@@ -14,12 +14,12 @@
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="apple-touch-icon-precomposed" href="/favicon.png">
 
-<link rel="stylesheet" href="/css/style.css?rnd=1591950081" />
+<link rel="stylesheet" href="/css/style.css?rnd=1591950593" />
 
-<link rel="stylesheet" href="/css/my.css?rnd=1591950081">
+<link rel="stylesheet" href="/css/my.css?rnd=1591950593">
 
 <meta property="og:title" content="IPFS 源码阅读 -- 命令执行流程" />
-<meta property="og:description" content="本文将带着大家一起通过源码来学习 IPFS 的命令启动过程，加深对 IPFS 的认识。" />
+<meta property="og:description" content="本文将带着大家一起通过源码来学习 IPFS 的命令执行过程，加深对 IPFS 的认识。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="/posts/ipfs-ming-ling-zhi-xing-liu-cheng/" />
 <meta property="og:image" content="/images/og-featured.png"/>
@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="/images/og-featured.png"/>
 
 <meta name="twitter:title" content="IPFS 源码阅读 -- 命令执行流程"/>
-<meta name="twitter:description" content="本文将带着大家一起通过源码来学习 IPFS 的命令启动过程，加深对 IPFS 的认识。"/>
+<meta name="twitter:description" content="本文将带着大家一起通过源码来学习 IPFS 的命令执行过程，加深对 IPFS 的认识。"/>
 
 
 
@@ -130,31 +130,31 @@
 <li>ConstructNode: 节点构造函数</li>
 </ul>
 <p>而在 cmd/ipfs/main.go 的 mainRet() 函数中，它的定义如下：</p>
-<pre><code>buildEnv := func(ctx context.Context, req *cmds.Request) (cmds.Environment, error) {
-   // 此处省略代码
-   // this sets up the function that will initialize the node
-   // this is so that we can construct the node lazily.
-   return &amp;oldcmds.Context{
-      ConfigRoot: repoPath,
-      LoadConfig: loadConfig,
-      ReqLog:     &amp;oldcmds.ReqLog{},
-      ConstructNode: func() (n *core.IpfsNode, err error) {
-         // 此处省略代码
-         r, err := fsrepo.Open(repoPath)
-         if err != nil { // repo is owned by the node
-            return nil, err
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">buildEnv</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">func</span>(<span style="color:#a6e22e">ctx</span> <span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">Context</span>, <span style="color:#a6e22e">req</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">cmds</span>.<span style="color:#a6e22e">Request</span>) (<span style="color:#a6e22e">cmds</span>.<span style="color:#a6e22e">Environment</span>, <span style="color:#66d9ef">error</span>) {
+   <span style="color:#75715e">// 此处省略代码
+</span><span style="color:#75715e"></span>   <span style="color:#75715e">// this sets up the function that will initialize the node
+</span><span style="color:#75715e"></span>   <span style="color:#75715e">// this is so that we can construct the node lazily.
+</span><span style="color:#75715e"></span>   <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">oldcmds</span>.<span style="color:#a6e22e">Context</span>{
+      <span style="color:#a6e22e">ConfigRoot</span>: <span style="color:#a6e22e">repoPath</span>,
+      <span style="color:#a6e22e">LoadConfig</span>: <span style="color:#a6e22e">loadConfig</span>,
+      <span style="color:#a6e22e">ReqLog</span>:     <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">oldcmds</span>.<span style="color:#a6e22e">ReqLog</span>{},
+      <span style="color:#a6e22e">ConstructNode</span>: <span style="color:#66d9ef">func</span>() (<span style="color:#a6e22e">n</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">core</span>.<span style="color:#a6e22e">IpfsNode</span>, <span style="color:#a6e22e">err</span> <span style="color:#66d9ef">error</span>) {
+         <span style="color:#75715e">// 此处省略代码
+</span><span style="color:#75715e"></span>         <span style="color:#a6e22e">r</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">fsrepo</span>.<span style="color:#a6e22e">Open</span>(<span style="color:#a6e22e">repoPath</span>)
+         <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> { <span style="color:#75715e">// repo is owned by the node
+</span><span style="color:#75715e"></span>            <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">err</span>
          }
  
-         // ok everything is good. set it on the invocation (for ownership)
-         // and return it.
-         n, err = core.NewNode(ctx, &amp;core.BuildCfg{
-            Repo: r,
+         <span style="color:#75715e">// ok everything is good. set it on the invocation (for ownership)
+</span><span style="color:#75715e"></span>         <span style="color:#75715e">// and return it.
+</span><span style="color:#75715e"></span>         <span style="color:#a6e22e">n</span>, <span style="color:#a6e22e">err</span> = <span style="color:#a6e22e">core</span>.<span style="color:#a6e22e">NewNode</span>(<span style="color:#a6e22e">ctx</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">core</span>.<span style="color:#a6e22e">BuildCfg</span>{
+            <span style="color:#a6e22e">Repo</span>: <span style="color:#a6e22e">r</span>,
          })
-         // 此处省略代码
-      },
-   }, nil
+         <span style="color:#75715e">// 此处省略代码
+</span><span style="color:#75715e"></span>      },
+   }, <span style="color:#66d9ef">nil</span>
 }
-</code></pre><h2 id="配置实例化">配置实例化</h2>
+</code></pre></div><h2 id="配置实例化">配置实例化</h2>
 <p>go-ipfs-config/config.go 中的 Config 是整个 IPFS 的配置说明，它由上面提到的命令运行的上下文 Context 来管理。</p>
 <ul>
 <li>定义:</li>
@@ -187,55 +187,55 @@
 <ul>
 <li>定义：</li>
 </ul>
-<pre><code>// IpfsNode is IPFS Core module. It represents an IPFS instance.
-type IpfsNode struct {
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#75715e">// IpfsNode is IPFS Core module. It represents an IPFS instance.
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">IpfsNode</span> <span style="color:#66d9ef">struct</span> {
  
-   // Self
-   Identity peer.ID // the local node's identity
+   <span style="color:#75715e">// Self
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Identity</span> <span style="color:#a6e22e">peer</span>.<span style="color:#a6e22e">ID</span> <span style="color:#75715e">// the local node&#39;s identity
+</span><span style="color:#75715e"></span> 
+   <span style="color:#a6e22e">Repo</span> <span style="color:#a6e22e">repo</span>.<span style="color:#a6e22e">Repo</span>
  
-   Repo repo.Repo
+   <span style="color:#75715e">// Local node
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Pinning</span>         <span style="color:#a6e22e">pin</span>.<span style="color:#a6e22e">Pinner</span> <span style="color:#75715e">// the pinning manager
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Mounts</span>          <span style="color:#a6e22e">Mounts</span>     <span style="color:#75715e">// current mount state, if any.
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">PrivateKey</span>      <span style="color:#a6e22e">ic</span>.<span style="color:#a6e22e">PrivKey</span> <span style="color:#75715e">// the local node&#39;s private Key
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">PNetFingerprint</span> []<span style="color:#66d9ef">byte</span>     <span style="color:#75715e">// fingerprint of private network
+</span><span style="color:#75715e"></span> 
+   <span style="color:#75715e">// Services
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Peerstore</span>       <span style="color:#a6e22e">pstore</span>.<span style="color:#a6e22e">Peerstore</span>     <span style="color:#75715e">// storage for other Peer instances
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Blockstore</span>      <span style="color:#a6e22e">bstore</span>.<span style="color:#a6e22e">GCBlockstore</span>  <span style="color:#75715e">// the block store (lower level)
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Filestore</span>       <span style="color:#f92672">*</span><span style="color:#a6e22e">filestore</span>.<span style="color:#a6e22e">Filestore</span> <span style="color:#75715e">// the filestore blockstore
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">BaseBlocks</span>      <span style="color:#a6e22e">bstore</span>.<span style="color:#a6e22e">Blockstore</span>    <span style="color:#75715e">// the raw blockstore, no filestore wrapping
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">GCLocker</span>        <span style="color:#a6e22e">bstore</span>.<span style="color:#a6e22e">GCLocker</span>      <span style="color:#75715e">// the locker used to protect the blockstore during gc
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Blocks</span>          <span style="color:#a6e22e">bserv</span>.<span style="color:#a6e22e">BlockService</span>   <span style="color:#75715e">// the block service, get/add blocks.
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">DAG</span>             <span style="color:#a6e22e">ipld</span>.<span style="color:#a6e22e">DAGService</span>      <span style="color:#75715e">// the merkle dag service, get/add objects.
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Resolver</span>        <span style="color:#f92672">*</span><span style="color:#a6e22e">resolver</span>.<span style="color:#a6e22e">Resolver</span>   <span style="color:#75715e">// the path resolution system
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Reporter</span>        <span style="color:#a6e22e">metrics</span>.<span style="color:#a6e22e">Reporter</span>
+   <span style="color:#a6e22e">Discovery</span>       <span style="color:#a6e22e">discovery</span>.<span style="color:#a6e22e">Service</span>
+   <span style="color:#a6e22e">FilesRoot</span>       <span style="color:#f92672">*</span><span style="color:#a6e22e">mfs</span>.<span style="color:#a6e22e">Root</span>
+   <span style="color:#a6e22e">RecordValidator</span> <span style="color:#a6e22e">record</span>.<span style="color:#a6e22e">Validator</span>
  
-   // Local node
-   Pinning         pin.Pinner // the pinning manager
-   Mounts          Mounts     // current mount state, if any.
-   PrivateKey      ic.PrivKey // the local node's private Key
-   PNetFingerprint []byte     // fingerprint of private network
+   <span style="color:#75715e">// Online
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">PeerHost</span>     <span style="color:#a6e22e">p2phost</span>.<span style="color:#a6e22e">Host</span>        <span style="color:#75715e">// the network host (server+client)
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Bootstrapper</span> <span style="color:#a6e22e">io</span>.<span style="color:#a6e22e">Closer</span>           <span style="color:#75715e">// the periodic bootstrapper
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Routing</span>      <span style="color:#a6e22e">routing</span>.<span style="color:#a6e22e">IpfsRouting</span> <span style="color:#75715e">// the routing system. recommend ipfs-dht
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Exchange</span>     <span style="color:#a6e22e">exchange</span>.<span style="color:#a6e22e">Interface</span>  <span style="color:#75715e">// the block exchange + strategy (bitswap)
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Namesys</span>      <span style="color:#a6e22e">namesys</span>.<span style="color:#a6e22e">NameSystem</span>  <span style="color:#75715e">// the name system, resolves paths to hashes
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">Reprovider</span>   <span style="color:#f92672">*</span><span style="color:#a6e22e">rp</span>.<span style="color:#a6e22e">Reprovider</span>      <span style="color:#75715e">// the value reprovider system
+</span><span style="color:#75715e"></span>   <span style="color:#a6e22e">IpnsRepub</span>    <span style="color:#f92672">*</span><span style="color:#a6e22e">ipnsrp</span>.<span style="color:#a6e22e">Republisher</span>
  
-   // Services
-   Peerstore       pstore.Peerstore     // storage for other Peer instances
-   Blockstore      bstore.GCBlockstore  // the block store (lower level)
-   Filestore       *filestore.Filestore // the filestore blockstore
-   BaseBlocks      bstore.Blockstore    // the raw blockstore, no filestore wrapping
-   GCLocker        bstore.GCLocker      // the locker used to protect the blockstore during gc
-   Blocks          bserv.BlockService   // the block service, get/add blocks.
-   DAG             ipld.DAGService      // the merkle dag service, get/add objects.
-   Resolver        *resolver.Resolver   // the path resolution system
-   Reporter        metrics.Reporter
-   Discovery       discovery.Service
-   FilesRoot       *mfs.Root
-   RecordValidator record.Validator
+   <span style="color:#a6e22e">PubSub</span>   <span style="color:#f92672">*</span><span style="color:#a6e22e">pubsub</span>.<span style="color:#a6e22e">PubSub</span>
+   <span style="color:#a6e22e">PSRouter</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">psrouter</span>.<span style="color:#a6e22e">PubsubValueStore</span>
+   <span style="color:#a6e22e">DHT</span>      <span style="color:#f92672">*</span><span style="color:#a6e22e">dht</span>.<span style="color:#a6e22e">IpfsDHT</span>
+   <span style="color:#a6e22e">P2P</span>      <span style="color:#f92672">*</span><span style="color:#a6e22e">p2p</span>.<span style="color:#a6e22e">P2P</span>
  
-   // Online
-   PeerHost     p2phost.Host        // the network host (server+client)
-   Bootstrapper io.Closer           // the periodic bootstrapper
-   Routing      routing.IpfsRouting // the routing system. recommend ipfs-dht
-   Exchange     exchange.Interface  // the block exchange + strategy (bitswap)
-   Namesys      namesys.NameSystem  // the name system, resolves paths to hashes
-   Reprovider   *rp.Reprovider      // the value reprovider system
-   IpnsRepub    *ipnsrp.Republisher
+   <span style="color:#a6e22e">proc</span> <span style="color:#a6e22e">goprocess</span>.<span style="color:#a6e22e">Process</span>
+   <span style="color:#a6e22e">ctx</span>  <span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">Context</span>
  
-   PubSub   *pubsub.PubSub
-   PSRouter *psrouter.PubsubValueStore
-   DHT      *dht.IpfsDHT
-   P2P      *p2p.P2P
- 
-   proc goprocess.Process
-   ctx  context.Context
- 
-   mode         mode
-   localModeSet bool
+   <span style="color:#a6e22e">mode</span>         <span style="color:#a6e22e">mode</span>
+   <span style="color:#a6e22e">localModeSet</span> <span style="color:#66d9ef">bool</span>
 }
-</code></pre><ul>
+</code></pre></div><ul>
 <li>实例化：</li>
 </ul>
 <p>调用 cmd.Context  中的 ConstructNode 函数（在 buildEnv 中有定义），具体过程如下：</p>
