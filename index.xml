@@ -6,10 +6,127 @@
     <description>FILVIP</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 07 Mar 2019 22:22:29 +0800</lastBuildDate>
+    <lastBuildDate>Sun, 10 Mar 2019 20:46:33 +0800</lastBuildDate>
     
     <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>IPFS 源码阅读 -- add 命令详解</title>
+      <link>/posts/add-ming-ling-xiang-jie/</link>
+      <pubDate>Sun, 10 Mar 2019 20:46:33 +0800</pubDate>
+      
+      <guid>/posts/add-ming-ling-xiang-jie/</guid>
+      <description>&lt;p&gt;ipfs add 命令的入口命令是 core/commands/add.go 中的 AddCmd ，其中 PreRun 负责参数解析，Run 是真正的 add 操作的执行体，PostRun 是 add 操作的结果返回输出。&lt;/p&gt;
+&lt;h2 id=&#34;前言&#34;&gt;前言&lt;/h2&gt;
+&lt;p&gt;add 命令属于 CoreAPI ，而 CoreAPI 的定义（core/coreapi/coreapi.go）如下：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;CoreAPI&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;node&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;core&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;IpfsNode&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;dag&lt;/span&gt;  &lt;span style=&#34;color:#a6e22e&#34;&gt;ipld&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;DAGService&lt;/span&gt;
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;可以看到整个 CoreAPI 主要包含 IPFSNode 对象和 DAGService，它们分别表示 IPFS  节点状态以及 IPFS Merkle DAG 状态维护的服务。&lt;/p&gt;
+&lt;p&gt;因为所有核心命令其实是 CoreAPI 一个具体的实现，比如 add 命令就是 core/coreapi/unixfs.go 中的 UnixfsAPI 来负责的。&lt;/p&gt;
+&lt;h2 id=&#34;unixfsapi-详解&#34;&gt;UnixfsAPI 详解&lt;/h2&gt;
+&lt;p&gt;UnixfsAPI 接口定义可以查看 core/coreapi/interface/unixfs.go，其中：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Add 方法：将一个 I/O reader 对象转化为 merkledag 节点，并且保存到 blockstore中，并返回 merkle 节点的 key。&lt;/li&gt;
+&lt;li&gt;Get 方法： 返回指向一个特定的 path 的只读的 fd。&lt;/li&gt;
+&lt;li&gt;Ls 方法： 返回一个目录下的所有 links。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;add-方法详解&#34;&gt;Add 方法详解&lt;/h2&gt;
+&lt;p&gt;当启动 daemon 的时候，本地执行 ipfs add 其实是通过 http 代理，将请求发送到 daemon 服务，此时真正执行的是 daemon 命令中启动的 IFPS Node, 当然我们也可以在服务没有启动的时候执行 ipfs add , 此时相当于使用的是 offlineExchange。&lt;/p&gt;
+&lt;p&gt;实际执行 Add 方法首先会声明一个 Adder 对象，定义如下：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// Adder holds the switches passed to the `add` command.
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Adder&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;ctx&lt;/span&gt;        &lt;span style=&#34;color:#a6e22e&#34;&gt;context&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Context&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;pinning&lt;/span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;pin&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Pinner&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;blockstore&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;bstore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;GCBlockstore&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;dagService&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;ipld&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;DAGService&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;bufferedDS&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;ipld&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;BufferedDAG&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Out&lt;/span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;chan&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;-&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;interface&lt;/span&gt;{}
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Progress&lt;/span&gt;   &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Hidden&lt;/span&gt;     &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Pin&lt;/span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Trickle&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;RawLeaves&lt;/span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Silent&lt;/span&gt;     &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Wrap&lt;/span&gt;       &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Name&lt;/span&gt;       &lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;NoCopy&lt;/span&gt;     &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;Chunker&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;string&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;root&lt;/span&gt;       &lt;span style=&#34;color:#a6e22e&#34;&gt;ipld&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Node&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;mroot&lt;/span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;mfs&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Root&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;unlocker&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;bstore&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Unlocker&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;tempRoot&lt;/span&gt;   &lt;span style=&#34;color:#a6e22e&#34;&gt;cid&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Cid&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;CidBuilder&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;cid&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;Builder&lt;/span&gt;
+   &lt;span style=&#34;color:#a6e22e&#34;&gt;liveNodes&lt;/span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;uint64&lt;/span&gt;
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;然后再调用 adder的 AddAllAndPin 方法。&lt;/p&gt;
+&lt;h2 id=&#34;数据的存储&#34;&gt;数据的存储&lt;/h2&gt;
+&lt;h3 id=&#34;创建-merkle-dag&#34;&gt;创建 merkle DAG&lt;/h3&gt;
+&lt;p&gt;coreunix/add.go add首先构造chunker（数据流切分的splitter），然后根据数据流自底向上构造merkle DAG（代码位于balanced/builder.go Layout方法），详细如下：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/add-command.png&#34; alt=&#34;add-command.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;步骤如下：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;首先创建根节点&lt;/li&gt;
+&lt;li&gt;如果有数据剩余则继续添加节点，同时把根节点挂入左子树&lt;/li&gt;
+&lt;li&gt;填充未满的节点&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;//      &lt;span style=&#34;color:#e6db74&#34;&gt;`&lt;/span&gt;Layout&lt;span style=&#34;color:#e6db74&#34;&gt;`&lt;/span&gt; creates a root and hands it off to be filled:
+//
+//             +-------------+
+//             |   Root &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;    |
+//             +-------------+
+//                    |
+//       &lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt; fillNodeRec fills in the &lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;
+//       &lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt; chunks on the root.      &lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;
+//                    |
+//             +------+------+
+//             |             |
+//        + - - - - +   + - - - - +
+//        | Chunk &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; |   | Chunk &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt; |
+//        + - - - - +   + - - - - +
+//
+//                           ↓
+//      When the root is full but there&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;s more data...
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//                           ↓
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//             +-------------+
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//             |   Root 1    |
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//             +-------------+
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//                    |
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//             +------+------+
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//             |             |
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//        +=========+   +=========+   + - - - - +
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//        | Chunk 1 |   | Chunk 2 |   | Chunk 3 |
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//        +=========+   +=========+   + - - - - +
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//                           ↓
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;//      ...Layout&amp;#39;&lt;/span&gt;s job is to create a new root.
+//                           ↓
+//
+//                            +-------------+
+//                            |   Root &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;    |
+//                            +-------------+
+//                                  |
+//                    +-------------+ - - - - - - - - +
+//                    |                               |
+//             +-------------+            &lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt; fillNodeRec creates the &lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;
+//             |   Node &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;    |            &lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt; branch that connects    &lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;
+//             +-------------+            &lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Root 2&amp;#34;&lt;/span&gt; to &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Chunk 3.&amp;#34;&lt;/span&gt;  &lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;
+//                    |                               |
+//             +------+------+             + - - - - -+
+//             |             |             |
+//        +&lt;span style=&#34;color:#f92672&#34;&gt;=========&lt;/span&gt;+   +&lt;span style=&#34;color:#f92672&#34;&gt;=========&lt;/span&gt;+   + - - - - +
+//        | Chunk &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; |   | Chunk &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt; |   | Chunk &lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt; |
+//        +&lt;span style=&#34;color:#f92672&#34;&gt;=========&lt;/span&gt;+   +&lt;span style=&#34;color:#f92672&#34;&gt;=========&lt;/span&gt;+   + - - - - +
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id=&#34;数据持久化&#34;&gt;数据持久化&lt;/h3&gt;
+&lt;p&gt;coreunix/add.go Finalized() 调用file.go Flush方法进行数据持久化到磁盘，其中经过一些列的转化例如：shard文件到对应的目录，cid到key的转化等，最终调用flatfs.go Put方法进行落盘（首先把数据生成到临时文件，之后进行mv操作）&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/add-command-02.png&#34; alt=&#34;add-command-02.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/add-command-03.png&#34; alt=&#34;add-command-03.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;flatfs 文件系统来自于配置文件的datastore-&amp;gt;Spec-&amp;gt;mounts。&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>IPFS 源码阅读 -- daemon 启动流程</title>
