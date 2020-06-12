@@ -6,10 +6,103 @@
     <description>FILVIP (ipfs)</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 10 Mar 2019 20:46:33 +0800</lastBuildDate>
+    <lastBuildDate>Thu, 21 Mar 2019 20:02:45 +0800</lastBuildDate>
     
     <atom:link href="/tags/ipfs/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>IPFS Cluster 实战 -- 多集群通信</title>
+      <link>/posts/ipfs-cluster-shi-zhan-duo-ji-qun-tong-xin/</link>
+      <pubDate>Thu, 21 Mar 2019 20:02:45 +0800</pubDate>
+      
+      <guid>/posts/ipfs-cluster-shi-zhan-duo-ji-qun-tong-xin/</guid>
+      <description>&lt;p&gt;&lt;img src=&#34;/images/cluster/cluster-of-clusters.png&#34; alt=&#34;cluster-of-clusters&#34;&gt;&lt;/p&gt;
+&lt;p&gt;ipfs-cluster-service 提供了对 ipfs 节点的代理功能，使得整个 cluster 可以对外当做一个 ipfs 节点一样来使用。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;代理端口默认开在 9095&lt;/li&gt;
+&lt;li&gt;对一部分命令进行了封装，例如：&lt;code&gt;ipfs --api /ip4/127.0.0.1/tcp/9095 add myfile.txt&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;对于没有进行封装的命令，将会穿透访问到 ipfs 节点本身，例如访问 &lt;code&gt;ipfs --api /ip4/127.0.0.1/tcp/9095 repo gc&lt;/code&gt; 和访问 &lt;code&gt;ipfs repo gc&lt;/code&gt; 效果一致。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;常用命令&#34;&gt;常用命令&lt;/h2&gt;
+&lt;pre&gt;&lt;code&gt;(1) ipfs --api /ip4/127.0.0.1/tcp/9095 add myfile.txt
+    该命令将本地 myfile.txt 的内容添加到本地 IPFS 节点中，并且将文件对应的哈希值添加到集群中。
+
+(2) ipfs --api /ip4/127.0.0.1/tcp/9095 pin add &amp;lt;cid&amp;gt;
+    根据 cid 获取网络中对应的内容，写入本地 IPFS 节点，并且将该哈希值添加到集群中。
+    
+(3) ipfs --api /ip4/127.0.0.1/tcp/9095 pin rm &amp;lt;cid&amp;gt;
+    将该 cid 记录从本集群中移除。
+
+(4) ipfs --api /ip4/127.0.0.1/tcp/9095 pin ls 
+    显示本集群中所有的 pin 记录。
+
+(5) ipfs repo gc 
+    该命令会触发 gc 操作，回收所有 unpin 的内容在 IPFS 节点中所占用的存储空间。
+&lt;/code&gt;&lt;/pre&gt;&lt;h2 id=&#34;参考文献&#34;&gt;参考文献&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&#34;https://cluster.ipfs.io/documentation/composite-clusters/&#34;&gt;https://cluster.ipfs.io/documentation/composite-clusters/&lt;/a&gt;&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>IPFS Cluster 实战 -- supervisor 托管</title>
+      <link>/posts/ipfs-cluster-shi-zhan-supervisor-guan-li-ipfs-cluster-service/</link>
+      <pubDate>Thu, 21 Mar 2019 17:05:28 +0800</pubDate>
+      
+      <guid>/posts/ipfs-cluster-shi-zhan-supervisor-guan-li-ipfs-cluster-service/</guid>
+      <description>&lt;p&gt;配置模版：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;[program:ipfs-cluster-service]
+command=/bin/bash -c &amp;quot;/usr/local/bin/ipfs-cluster-service daemon&amp;quot;
+environment=HOME=&amp;quot;/home/deploy&amp;quot;,USER=&amp;quot;deploy&amp;quot;
+user=deploy
+process_name=%(program_name)s ; process_name expr (default %(program_name)s)
+numprocs=1                    ; number of processes copies to start (def 1)
+startsecs=1                   ; number of secs prog must stay running (def. 1)
+startretries=3                ; max # of serial start failures (default 3)
+user=deploy                     ; setuid to this UNIX account to run the program
+redirect_stderr=true          ; redirect proc stderr to stdout (default false)
+stdout_logfile=/home/deploy/logs/ipfs-cluster-service.stdout.log
+stdout_logfile_maxbytes=50MB  ; max # logfile bytes b4 rotation (default 50MB)
+stdout_logfile_backups=10     ; # of stdout logfile backups (default 10)
+stdout_capture_maxbytes=1MB   ; number of bytes in &#39;capturemode&#39; (default 0)
+stdout_events_enabled=false   ; emit events on stdout writes (default false)
+stderr_logfile=/home/deploy/logs/ipfs-cluster-service.stderr.log
+stderr_logfile_maxbytes=10MB  ; max # logfile bytes b4 rotation (default 50MB)
+stderr_logfile_backups=10     ; # of stderr logfile backups (default 10)
+stderr_capture_maxbytes=1MB   ; number of bytes in &#39;capturemode&#39; (default 0)
+stderr_events_enabled=false   ; emit events on stderr writes (default false)
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;这个&lt;a href=&#34;https://github.com/ipfs/go-ipfs/issues/861&#34;&gt;提问&lt;/a&gt; 解释了为什么需要这样配置 command 和 environment。&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>IPFS Cluster 实战 -- 概览</title>
+      <link>/posts/ipfs-cluster-shi-zhan-gai-lan/</link>
+      <pubDate>Wed, 20 Mar 2019 20:58:44 +0800</pubDate>
+      
+      <guid>/posts/ipfs-cluster-shi-zhan-gai-lan/</guid>
+      <description>&lt;ul&gt;
+&lt;li&gt;IPFS Cluster 是 IPFS 集群的编排工具。&lt;/li&gt;
+&lt;li&gt;一个 IPFS 节点对应一个 IPFS Cluster 的 peer。&lt;/li&gt;
+&lt;li&gt;IPFS Cluster peers 采用 libp2p 进行通信，与 IPFS 类似。&lt;/li&gt;
+&lt;li&gt;同一个 IPFS Cluster 的节点需要确保 Secret 一致。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&#34;/images/cluster/cluster-overview.png&#34; alt=&#34;overview&#34;&gt;&lt;/p&gt;
+&lt;h2 id=&#34;已有特性&#34;&gt;已有特性&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;多节点之间内容的复制，pin，add 操作。&lt;/li&gt;
+&lt;li&gt;从多节点中获取内容&lt;/li&gt;
+&lt;li&gt;采用基于 Raft 的共识&lt;/li&gt;
+&lt;li&gt;控制副本数的上限和下限&lt;/li&gt;
+&lt;li&gt;某个 pin 操作失败后，会自动重试&lt;/li&gt;
+&lt;li&gt;节点存储负载均衡&lt;/li&gt;
+&lt;li&gt;集群数据的导入和导出 （Pin-set exports and imports）&lt;/li&gt;
+&lt;li&gt;集群节点动态添加和移除&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;参考文献&#34;&gt;参考文献&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&#34;https://cluster.ipfs.io/documentation/overview/&#34;&gt;https://cluster.ipfs.io/documentation/overview/&lt;/a&gt;&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>IPFS 源码阅读 -- add 命令详解</title>

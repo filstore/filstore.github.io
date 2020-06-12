@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>ipf on FILVIP</title>
+    <link>/tags/ipf/</link>
+    <description>FILVIP (ipf)</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 22 Mar 2019 22:08:42 +0800</lastBuildDate>
+    
+    <atom:link href="/tags/ipf/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>IPFS Cluster 实战 -- 使用 bootstrap 添加新节点</title>
+      <link>/posts/ipfs-cluster-shi-zhan-shi-yong-bootstrap-tian-jia-xin-jie-dian/</link>
+      <pubDate>Fri, 22 Mar 2019 22:08:42 +0800</pubDate>
+      
+      <guid>/posts/ipfs-cluster-shi-zhan-shi-yong-bootstrap-tian-jia-xin-jie-dian/</guid>
+      <description>&lt;h2 id=&#34;准备工作&#34;&gt;准备工作&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;安装并运行 IPFS&lt;/li&gt;
+&lt;li&gt;根据操作系统下载预编译好的 ipfs ipfs-cluster-service 和 ipfs-cluster-ctl，本文以 ubuntu 为例&lt;/li&gt;
+&lt;li&gt;将可执行文件 ipfs-cluster-service 和 ipfs-cluster-ctl 拷贝到 /usr/local/bin 目录下，使其可以当做全局工具使用&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;以上是前置准备工作，每一个节点都需要做好这些前置步骤。接下来要进行集群配置。&lt;/p&gt;
+&lt;h2 id=&#34;step-0-运行第一个集群节点&#34;&gt;Step 0: 运行第一个集群节点&lt;/h2&gt;
+&lt;p&gt;运行 &lt;code&gt;ipfs-cluster-service init&lt;/code&gt; 初始化第一个集群节点配置。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;你也可以在运行上述命令之前手动生成和配置 CLUSTER_SECRET 变量，如下所示(假设当前是在 node0 机器上)：&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;pre&gt;&lt;code&gt;node0 $ export CLUSTER_SECRET=$(od  -vN 32 -An -tx1 /dev/urandom | tr -d &#39; \n&#39;)
+node0 $ echo $CLUSTER_SECRET
+9a420ec947512b8836d8eb46e1c56fdb746ab8a78015b9821e6b46b38344038f
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;初始化完成后，在 ~/.ipfs-cluster/service.json 文件中有  secret 字段就是该集群的秘钥。其他节点加入集群需要有相同的秘钥。&lt;/p&gt;
+&lt;p&gt;接着把这个节点的 cluster daemon 服务启动：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;node0&amp;gt; ipfs-cluster-service daemon
+&lt;/code&gt;&lt;/pre&gt;&lt;h2 id=&#34;step-1-添加新节点到集群&#34;&gt;Step 1: 添加新节点到集群&lt;/h2&gt;
+&lt;p&gt;必须确保秘钥和 Step 0 中的秘钥一致：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;node1&amp;gt; export CLUSTER_SECRET=&amp;lt;copy from node0&amp;gt;
+node1&amp;gt; ipfs-cluster-service init
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;执行上述命令后，就完成了集群配置。接着使用 bootstrap 命令加入集群。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;node1&amp;gt; ipfs-cluster-service daemon --bootstrap /ip4/&amp;lt;ip-of-node0&amp;gt;/tcp/9096/ipfs/&amp;lt;cluster-peerid-of-node0&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;接着运行 ipfs-cluster-ctl peers ls 就可以看到集群中其他节点，示例如下：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;node1 &amp;gt; ipfs-cluster-ctl peers ls
+QmYFYwnFUkjFhJcSJJGN72wwedZnpQQ4aNpAtPZt8g5fCd | Sees 1 other peers
+  &amp;gt; Addresses:
+    - /ip4/127.0.0.1/tcp/10096/ipfs/QmYFYwnFUkjFhJcSJJGN72wwedZnpQQ4aNpAtPZt8g5fCd
+    - /ip4/192.168.1.3/tcp/10096/ipfs/QmYFYwnFUkjFhJcSJJGN72wwedZnpQQ4aNpAtPZt8g5fCd
+  &amp;gt; IPFS: Qmaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    - /ip4/127.0.0.1/tcp/4001/ipfs/Qmaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    - /ip4/192.168.1.3/tcp/4001/ipfs/Qmaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+QmZjSoXUQgJ9tutP1rXjjNYwTrRM9QPhmD9GHVjbtgWxEn | Sees 1 other peers
+  &amp;gt; Addresses:
+    - /ip4/127.0.0.1/tcp/9096/ipfs/QmZjSoXUQgJ9tutP1rXjjNYwTrRM9QPhmD9GHVjbtgWxEn
+    - /ip4/192.168.1.2/tcp/9096/ipfs/QmZjSoXUQgJ9tutP1rXjjNYwTrRM9QPhmD9GHVjbtgWxEn
+  &amp;gt; IPFS: Qmbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    - /ip4/127.0.0.1/tcp/4001/ipfs/Qmbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    - /ip4/192.168.1.2/tcp/4001/ipfs/Qmbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+&lt;/code&gt;&lt;/pre&gt;&lt;h2 id=&#34;step-2-从集群移除节点&#34;&gt;Step 2: 从集群移除节点&lt;/h2&gt;
+&lt;p&gt;命令 &lt;code&gt;ipfs-cluster-ctl peers rm &amp;lt;peer_id&amp;gt;&lt;/code&gt; 可以将节点移除，如：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;node0&amp;gt; ipfs-cluster-ctl peers rm QmYFYwnFUkjFhJcSJJGN72wwedZnpQQ4aNpAtPZt8g5fCd
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;运行之后就会断开 node1 的连接并且自动关闭 node1 的 ipfs-cluster-daemon 服务。&lt;/p&gt;
+&lt;h2 id=&#34;参考文献&#34;&gt;参考文献&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&#34;https://cluster.ipfs.io/guides/quickstart/&#34;&gt;https://cluster.ipfs.io/guides/quickstart/&lt;/a&gt;&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<title>IPFS Cluster 实战 -- 多集群通信 - FILVIP</title>
+<meta name="description" content="">
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="/favicon.png">
+
+<link rel="stylesheet" href="/css/style.css?rnd=1591953091" />
+
+<link rel="stylesheet" href="/css/my.css?rnd=1591953091">
+
+<meta property="og:title" content="IPFS Cluster 实战 -- 多集群通信" />
+<meta property="og:description" content="ipfs-cluster-service 提供了对 ipfs 节点的代理功能，使得整个 cluster 可以对外当做一个 ipfs 节点一样来使用。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/posts/ipfs-cluster-shi-zhan-duo-ji-qun-tong-xin/" />
+<meta property="og:image" content="/images/og-featured.png"/>
+<meta property="article:published_time" content="2019-03-21T20:02:45+08:00" />
+<meta property="article:modified_time" content="2019-03-21T20:02:45+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="/images/og-featured.png"/>
+
+<meta name="twitter:title" content="IPFS Cluster 实战 -- 多集群通信"/>
+<meta name="twitter:description" content="ipfs-cluster-service 提供了对 ipfs 节点的代理功能，使得整个 cluster 可以对外当做一个 ipfs 节点一样来使用。"/>
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header> 
+            
+                <h1 class="site-header">
+    <a href="/">FILVIP</a>
+</h1>
+<nav>
+    
+    
+    <a class="" href="/tags/ipfs" title="IPFS">IPFS</a>
+    
+    <a class="" href="/tags/filecoin" title="FileCoin">FileCoin</a>
+    
+    <a class="" href="/posts/" title="Archive">Archive</a>
+    
+    <a class="" href="/about" title="About">About</a>
+    
+</nav>
+
+            
+        </header>
+        <main id="main" tabindex="-1"> 
+            
+
+    <article class="post">
+        <header>
+            <h1 class="post-title">IPFS Cluster 实战 -- 多集群通信</h1>
+        </header>
+        <div class="content">
+            <p><img src="/images/cluster/cluster-of-clusters.png" alt="cluster-of-clusters"></p>
+<p>ipfs-cluster-service 提供了对 ipfs 节点的代理功能，使得整个 cluster 可以对外当做一个 ipfs 节点一样来使用。</p>
+<ul>
+<li>代理端口默认开在 9095</li>
+<li>对一部分命令进行了封装，例如：<code>ipfs --api /ip4/127.0.0.1/tcp/9095 add myfile.txt</code></li>
+<li>对于没有进行封装的命令，将会穿透访问到 ipfs 节点本身，例如访问 <code>ipfs --api /ip4/127.0.0.1/tcp/9095 repo gc</code> 和访问 <code>ipfs repo gc</code> 效果一致。</li>
+</ul>
+<h2 id="常用命令">常用命令</h2>
+<pre><code>(1) ipfs --api /ip4/127.0.0.1/tcp/9095 add myfile.txt
+    该命令将本地 myfile.txt 的内容添加到本地 IPFS 节点中，并且将文件对应的哈希值添加到集群中。
+
+(2) ipfs --api /ip4/127.0.0.1/tcp/9095 pin add &lt;cid&gt;
+    根据 cid 获取网络中对应的内容，写入本地 IPFS 节点，并且将该哈希值添加到集群中。
+    
+(3) ipfs --api /ip4/127.0.0.1/tcp/9095 pin rm &lt;cid&gt;
+    将该 cid 记录从本集群中移除。
+
+(4) ipfs --api /ip4/127.0.0.1/tcp/9095 pin ls 
+    显示本集群中所有的 pin 记录。
+
+(5) ipfs repo gc 
+    该命令会触发 gc 操作，回收所有 unpin 的内容在 IPFS 节点中所占用的存储空间。
+</code></pre><h2 id="参考文献">参考文献</h2>
+<p><a href="https://cluster.ipfs.io/documentation/composite-clusters/">https://cluster.ipfs.io/documentation/composite-clusters/</a></p>
+
+        </div>
+        
+
+    
+
+
+<div class="post-info">
+    
+        <div class="post-date">2019-03-21</div>
+    
+    <div class="post-taxonomies">
+        
+            
+                <ul class="post-tags">
+                    
+                        <li><a href="/tags/ipfs">#ipfs</a></li>
+                    
+                        <li><a href="/tags/cluster">#cluster</a></li>
+                    
+                </ul>
+        
+    </div>
+</div>
+
+    </article>
+
+    
+
+    
+
+
+        </main>
+        <footer>
+            
+                
+                
+
+                <p>© filstore.vip, 2020<br>
+Powered by <a target="_blank" href="https://gohugo.io/">Hugo</a>, theme <a target="_blank" href="https://github.com/mitrichius/hugo-theme-anubis">Anubis</a>.
+</p>
+            
+        </footer>
+    </div>
+</body>
+</html>

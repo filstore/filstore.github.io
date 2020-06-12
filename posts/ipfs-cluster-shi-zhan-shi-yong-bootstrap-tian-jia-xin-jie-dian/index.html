@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<title>IPFS Cluster 实战 -- 使用 bootstrap 添加新节点 - FILVIP</title>
+<meta name="description" content="">
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="/favicon.png">
+
+<link rel="stylesheet" href="/css/style.css?rnd=1591953091" />
+
+<link rel="stylesheet" href="/css/my.css?rnd=1591953091">
+
+<meta property="og:title" content="IPFS Cluster 实战 -- 使用 bootstrap 添加新节点" />
+<meta property="og:description" content="本文主要讨论 ipfs cluster 中添加节点的其中一种方式，即采用 bootstrap。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/posts/ipfs-cluster-shi-zhan-shi-yong-bootstrap-tian-jia-xin-jie-dian/" />
+<meta property="og:image" content="/images/og-featured.png"/>
+<meta property="article:published_time" content="2019-03-22T22:08:42+08:00" />
+<meta property="article:modified_time" content="2019-03-22T22:08:42+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="/images/og-featured.png"/>
+
+<meta name="twitter:title" content="IPFS Cluster 实战 -- 使用 bootstrap 添加新节点"/>
+<meta name="twitter:description" content="本文主要讨论 ipfs cluster 中添加节点的其中一种方式，即采用 bootstrap。"/>
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header> 
+            
+                <h1 class="site-header">
+    <a href="/">FILVIP</a>
+</h1>
+<nav>
+    
+    
+    <a class="" href="/tags/ipfs" title="IPFS">IPFS</a>
+    
+    <a class="" href="/tags/filecoin" title="FileCoin">FileCoin</a>
+    
+    <a class="" href="/posts/" title="Archive">Archive</a>
+    
+    <a class="" href="/about" title="About">About</a>
+    
+</nav>
+
+            
+        </header>
+        <main id="main" tabindex="-1"> 
+            
+
+    <article class="post">
+        <header>
+            <h1 class="post-title">IPFS Cluster 实战 -- 使用 bootstrap 添加新节点</h1>
+        </header>
+        <div class="content">
+            <h2 id="准备工作">准备工作</h2>
+<ul>
+<li>安装并运行 IPFS</li>
+<li>根据操作系统下载预编译好的 ipfs ipfs-cluster-service 和 ipfs-cluster-ctl，本文以 ubuntu 为例</li>
+<li>将可执行文件 ipfs-cluster-service 和 ipfs-cluster-ctl 拷贝到 /usr/local/bin 目录下，使其可以当做全局工具使用</li>
+</ul>
+<p>以上是前置准备工作，每一个节点都需要做好这些前置步骤。接下来要进行集群配置。</p>
+<h2 id="step-0-运行第一个集群节点">Step 0: 运行第一个集群节点</h2>
+<p>运行 <code>ipfs-cluster-service init</code> 初始化第一个集群节点配置。</p>
+<blockquote>
+<p>你也可以在运行上述命令之前手动生成和配置 CLUSTER_SECRET 变量，如下所示(假设当前是在 node0 机器上)：</p>
+</blockquote>
+<pre><code>node0 $ export CLUSTER_SECRET=$(od  -vN 32 -An -tx1 /dev/urandom | tr -d ' \n')
+node0 $ echo $CLUSTER_SECRET
+9a420ec947512b8836d8eb46e1c56fdb746ab8a78015b9821e6b46b38344038f
+</code></pre><p>初始化完成后，在 ~/.ipfs-cluster/service.json 文件中有  secret 字段就是该集群的秘钥。其他节点加入集群需要有相同的秘钥。</p>
+<p>接着把这个节点的 cluster daemon 服务启动：</p>
+<pre><code>node0&gt; ipfs-cluster-service daemon
+</code></pre><h2 id="step-1-添加新节点到集群">Step 1: 添加新节点到集群</h2>
+<p>必须确保秘钥和 Step 0 中的秘钥一致：</p>
+<pre><code>node1&gt; export CLUSTER_SECRET=&lt;copy from node0&gt;
+node1&gt; ipfs-cluster-service init
+</code></pre><p>执行上述命令后，就完成了集群配置。接着使用 bootstrap 命令加入集群。</p>
+<pre><code>node1&gt; ipfs-cluster-service daemon --bootstrap /ip4/&lt;ip-of-node0&gt;/tcp/9096/ipfs/&lt;cluster-peerid-of-node0&gt;
+</code></pre><p>接着运行 ipfs-cluster-ctl peers ls 就可以看到集群中其他节点，示例如下：</p>
+<pre><code>node1 &gt; ipfs-cluster-ctl peers ls
+QmYFYwnFUkjFhJcSJJGN72wwedZnpQQ4aNpAtPZt8g5fCd | Sees 1 other peers
+  &gt; Addresses:
+    - /ip4/127.0.0.1/tcp/10096/ipfs/QmYFYwnFUkjFhJcSJJGN72wwedZnpQQ4aNpAtPZt8g5fCd
+    - /ip4/192.168.1.3/tcp/10096/ipfs/QmYFYwnFUkjFhJcSJJGN72wwedZnpQQ4aNpAtPZt8g5fCd
+  &gt; IPFS: Qmaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    - /ip4/127.0.0.1/tcp/4001/ipfs/Qmaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    - /ip4/192.168.1.3/tcp/4001/ipfs/Qmaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+QmZjSoXUQgJ9tutP1rXjjNYwTrRM9QPhmD9GHVjbtgWxEn | Sees 1 other peers
+  &gt; Addresses:
+    - /ip4/127.0.0.1/tcp/9096/ipfs/QmZjSoXUQgJ9tutP1rXjjNYwTrRM9QPhmD9GHVjbtgWxEn
+    - /ip4/192.168.1.2/tcp/9096/ipfs/QmZjSoXUQgJ9tutP1rXjjNYwTrRM9QPhmD9GHVjbtgWxEn
+  &gt; IPFS: Qmbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    - /ip4/127.0.0.1/tcp/4001/ipfs/Qmbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    - /ip4/192.168.1.2/tcp/4001/ipfs/Qmbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+</code></pre><h2 id="step-2-从集群移除节点">Step 2: 从集群移除节点</h2>
+<p>命令 <code>ipfs-cluster-ctl peers rm &lt;peer_id&gt;</code> 可以将节点移除，如：</p>
+<pre><code>node0&gt; ipfs-cluster-ctl peers rm QmYFYwnFUkjFhJcSJJGN72wwedZnpQQ4aNpAtPZt8g5fCd
+</code></pre><p>运行之后就会断开 node1 的连接并且自动关闭 node1 的 ipfs-cluster-daemon 服务。</p>
+<h2 id="参考文献">参考文献</h2>
+<p><a href="https://cluster.ipfs.io/guides/quickstart/">https://cluster.ipfs.io/guides/quickstart/</a></p>
+
+        </div>
+        
+
+    
+
+
+<div class="post-info">
+    
+        <div class="post-date">2019-03-22</div>
+    
+    <div class="post-taxonomies">
+        
+            
+                <ul class="post-tags">
+                    
+                        <li><a href="/tags/ipf">#ipf</a></li>
+                    
+                        <li><a href="/tags/cluster">#cluster</a></li>
+                    
+                </ul>
+        
+    </div>
+</div>
+
+    </article>
+
+    
+
+    
+
+
+        </main>
+        <footer>
+            
+                
+                
+
+                <p>© filstore.vip, 2020<br>
+Powered by <a target="_blank" href="https://gohugo.io/">Hugo</a>, theme <a target="_blank" href="https://github.com/mitrichius/hugo-theme-anubis">Anubis</a>.
+</p>
+            
+        </footer>
+    </div>
+</body>
+</html>

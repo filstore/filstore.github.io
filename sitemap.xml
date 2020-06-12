@@ -3,27 +3,57 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
+    <loc>/tags/cluster/</loc>
+    <lastmod>2019-03-22T22:08:42+08:00</lastmod>
+  </url>
+  
+  <url>
     <loc>/</loc>
-    <lastmod>2019-03-10T20:46:33+08:00</lastmod>
+    <lastmod>2019-03-22T22:08:42+08:00</lastmod>
   </url>
   
   <url>
-    <loc>/tags/ipfs/</loc>
-    <lastmod>2019-03-10T20:46:33+08:00</lastmod>
+    <loc>/tags/ipf/</loc>
+    <lastmod>2019-03-22T22:08:42+08:00</lastmod>
   </url>
   
   <url>
-    <loc>/posts/add-ming-ling-xiang-jie/</loc>
-    <lastmod>2019-03-10T20:46:33+08:00</lastmod>
+    <loc>/posts/ipfs-cluster-shi-zhan-shi-yong-bootstrap-tian-jia-xin-jie-dian/</loc>
+    <lastmod>2019-03-22T22:08:42+08:00</lastmod>
   </url>
   
   <url>
     <loc>/posts/</loc>
-    <lastmod>2019-03-10T20:46:33+08:00</lastmod>
+    <lastmod>2019-03-22T22:08:42+08:00</lastmod>
   </url>
   
   <url>
     <loc>/tags/</loc>
+    <lastmod>2019-03-22T22:08:42+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tags/ipfs/</loc>
+    <lastmod>2019-03-21T20:02:45+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/posts/ipfs-cluster-shi-zhan-duo-ji-qun-tong-xin/</loc>
+    <lastmod>2019-03-21T20:02:45+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/posts/ipfs-cluster-shi-zhan-supervisor-guan-li-ipfs-cluster-service/</loc>
+    <lastmod>2019-03-21T17:05:28+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/posts/ipfs-cluster-shi-zhan-gai-lan/</loc>
+    <lastmod>2019-03-20T20:58:44+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/posts/add-ming-ling-xiang-jie/</loc>
     <lastmod>2019-03-10T20:46:33+08:00</lastmod>
   </url>
   
