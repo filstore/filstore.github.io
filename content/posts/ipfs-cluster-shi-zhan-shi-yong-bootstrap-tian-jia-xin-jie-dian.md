@@ -1,7 +1,7 @@
 ---
 title: "IPFS Cluster 实战 -- 使用 bootstrap 添加新节点"
-date: 2019-03-22 22:08:42+0800
-summary: 本文主要讨论 ipfs cluster 中添加节点的其中一种方式，即采用 bootstrap。
+date: 2019-03-23 22:08:42+0800
+summary: 本文主要讨论 ipfs cluster 中添加节点的其中一种方式，即采用 bootstrap 动态添加。
 tags: [ipf, cluster]
 ---
 
@@ -77,6 +77,14 @@ node0> ipfs-cluster-ctl peers rm QmYFYwnFUkjFhJcSJJGN72wwedZnpQQ4aNpAtPZt8g5fCd
 ```
 
 运行之后就会断开 node1 的连接并且自动关闭 node1 的 ipfs-cluster-daemon 服务。
+
+## 两种集群启动方式比较
+
+| 指标 | 方式一：预设置集群节点 | 方式二：动态添加新节点 |
+| ------ | ------ | ------ |
+| 适用场景 | 第一次启动集群，并且清楚知道每个集群节点信息，例如节点的 cluster id 等 | 需要添加节点到正在运行的集群之中 |
+| 灵活性 | 较为笨拙，需要配置 init_peerset, peerstore 等繁琐的信息 | 较灵活，可以动态的加入新节点 | 
+
 
 ## 参考文献
 
